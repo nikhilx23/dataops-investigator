@@ -1,0 +1,19 @@
+version: 2
+
+models:
+  - name: mart_daily_revenue
+    description: >
+      Daily revenue for the synthetic commerce company. Grain: one row per UTC date.
+      booked_revenue_cents is attributed to the order date; captured/refunded/net to the
+      payment and refund event dates. All amounts in USD cents.
+    meta:
+      owner: analytics-engineering
+      grain: revenue_date
+      dashboards: [revenue_overview]
+    columns:
+      - name: revenue_date
+        data_tests: [unique, not_null]
+      - name: booked_revenue_cents
+        data_tests: [not_null]
+      - name: net_collected_cents
+        data_tests: [not_null]

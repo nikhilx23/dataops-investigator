@@ -1,0 +1,14 @@
+# Credentials come from environment variables only (see .env.example). Never hardcode them.
+dataops:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DATAOPS_PG_HOST', '127.0.0.1') }}"
+      port: "{{ env_var('DATAOPS_PG_PORT', '5432') | as_number }}"
+      user: wh_transform
+      password: "{{ env_var('DATAOPS_WH_TRANSFORM_PASSWORD') }}"
+      dbname: "{{ env_var('DATAOPS_WAREHOUSE_DB', 'warehouse') }}"
+      schema: analytics
+      threads: 4
+      connect_timeout: 10

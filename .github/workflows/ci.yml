@@ -1,0 +1,106 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-unit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dbt,dev]"
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format
+        run: ruff format --check .
+      - name: Mypy
+        run: mypy
+      - name: Unit tests
+        run: pytest tests/unit -q
+      - name: dbt parse (no database needed)
+        env:
+          DATAOPS_WH_TRANSFORM_PASSWORD: parse-only-not-a-secret
+        run: dbt parse --project-dir dbt --profiles-dir dbt
+
+  integration:
+    # Real PostgreSQL + pgvector; runs the Milestone 1 vertical slice and the M1 demo script.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.0-pg16
+        env:
+          POSTGRES_PASSWORD: ci-admin-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dbt,dev]"
+      - name: Install psql client (>= 15 for \getenv)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client-16 || sudo apt-get install -y postgresql-client
+      - name: Generate throwaway CI credentials
+        run: |
+          python scripts/init_env.py
+          sed -i 's/^DATAOPS_PG_ADMIN_PASSWORD=.*/DATAOPS_PG_ADMIN_PASSWORD=ci-admin-password/' .env
+      - name: Bootstrap databases and roles
+        run: bash scripts/bootstrap_db.sh
+      - name: Integration tests
+        run: pytest tests/integration -q
+      - name: Milestone 1 demo
+        run: bash scripts/demo_m1.sh
+
+  compose-and-scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose config validates
+        run: |
+          python3 scripts/init_env.py
+          docker compose --profile lightweight config --quiet
+          docker compose --profile full config --quiet
+      - name: Build app image
+        run: docker build -f infra/docker/app.Dockerfile -t dataops-investigator/app:ci .
+      - name: Shellcheck
+        run: shellcheck -x scripts/*.sh infra/postgres/init/*.sh
+      - name: PowerShell parse check
+        shell: pwsh
+        run: |
+          $bad = 0
+          Get-ChildItem scripts/*.ps1 | ForEach-Object {
+            $errs = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errs)
+            if ($errs) { $bad++; $errs | Out-String | Write-Host }
+          }
+          exit $bad
+
+  secret-scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

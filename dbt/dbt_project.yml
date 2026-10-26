@@ -1,0 +1,23 @@
+name: dataops
+version: "0.1.0"
+config-version: 2
+profile: dataops
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+models:
+  dataops:
+    +persist_docs: {relation: true, columns: true}
+    staging:
+      +schema: staging
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table

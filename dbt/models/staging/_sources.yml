@@ -1,0 +1,21 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Append-only landing zone written by the batch loader (role wh_loader).
+    schema: raw
+    tables:
+      - name: source_records
+        description: Immutable versions of source rows (full JSON payload, provenance, checksum).
+        loaded_at_field: ingested_at
+        freshness:
+          warn_after: {count: 26, period: hour}
+          error_after: {count: 50, period: hour}
+        columns:
+          - name: record_id
+            data_tests: [unique, not_null]
+      - name: ingestion_batches
+        description: Ingestion manifests; only status = 'committed' batches are published.
+        columns:
+          - name: batch_id
+            data_tests: [unique, not_null]
