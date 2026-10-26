@@ -94,6 +94,30 @@ def cmd_generate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_simulate(args: argparse.Namespace) -> int:
+    from dataops.generator.generate import generate
+    from dataops.generator.ledger import build_ledger, write_ledger
+    from dataops.generator.simulator import simulate
+
+    ds = generate(args.seed, args.profile)
+    until = args.until or ds.end
+    if until > ds.end:
+        raise SystemExit(f"--until is after the simulation end {ds.end.isoformat()}")
+    write_ledger(build_ledger(ds), _ledger_path(args.profile, args.seed))
+    result = simulate(ds, until, reset=args.reset)
+    _emit(
+        {
+            "synthetic": True,
+            "seed": args.seed,
+            "profile": args.profile,
+            "simulation_start": ds.start.isoformat(),
+            "simulation_end": ds.end.isoformat(),
+            **result,
+        }
+    )
+    return 0
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     from dataops.generator.generate import TABLE_ORDER
     from dataops.ingestion.batch import ingest_range, ingest_table, watermark
@@ -150,8 +174,29 @@ def cmd_reconcile(args: argparse.Namespace) -> int:
     if args.ledger:
         ledger = json.loads(Path(args.ledger).read_text(encoding="utf-8"))
         results.append(revenue.reconcile_ledger_vs_mart(ledger, correlation_id, persist))
+        results.append(revenue.reconcile_inventory_ledger_vs_mart(ledger, correlation_id, persist))
     _emit({"correlation_id": correlation_id, "results": [r.as_dict() for r in results]})
     return 0 if all(r.status == "pass" for r in results) else 1
+
+
+def cmd_fingerprint(args: argparse.Namespace) -> int:
+    from dataops.reconciliation.fingerprint import fingerprint_all
+
+    prints = fingerprint_all(args.models or None)
+    _emit({m: {"rows": f.rows, "md5": f.md5} for m, f in prints.items()})
+    return 0
+
+
+def cmd_reset(args: argparse.Namespace) -> int:
+    if not args.confirm_synthetic_reset:
+        raise SystemExit(
+            "refusing to reset: this deletes the synthetic source, warehouse raw zone and dbt "
+            "schemas. Re-run with --confirm-synthetic-reset."
+        )
+    from dataops.admin import reset_synthetic_environment
+
+    _emit({"reset": reset_synthetic_environment(include_reliability=args.include_reliability)})
+    return 0
 
 
 def cmd_health(args: argparse.Namespace) -> int:
@@ -205,6 +250,15 @@ def build_parser() -> argparse.ArgumentParser:
     gen.add_argument("--ledger-out")
     gen.set_defaults(func=cmd_generate)
 
+    sim = sub.add_parser("simulate", help="advance the synthetic source through simulated time")
+    sim.add_argument("--seed", type=int, default=42)
+    sim.add_argument("--profile", default="small", choices=["tiny", "small", "medium", "large"])
+    sim.add_argument("--until", type=_ts, help="simulated time to advance to (default: end)")
+    sim.add_argument(
+        "--reset", action="store_true", help="truncate the synthetic source and restart the clock"
+    )
+    sim.set_defaults(func=cmd_simulate)
+
     ing = sub.add_parser("ingest", help="incremental batch extraction into warehouse raw")
     ing.add_argument("--tables", default="all")
     ing.add_argument("--until", type=_ts, help="catch up each table from its watermark to here")
@@ -227,6 +281,19 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--no-persist", action="store_true")
     rec.add_argument("--correlation-id")
     rec.set_defaults(func=cmd_reconcile)
+
+    rst = sub.add_parser("reset", help="DESTRUCTIVE: empty the synthetic demo environment")
+    rst.add_argument("--confirm-synthetic-reset", action="store_true")
+    rst.add_argument(
+        "--include-reliability",
+        action="store_true",
+        help="also delete reliability metadata (kept by default)",
+    )
+    rst.set_defaults(func=cmd_reset)
+
+    fp = sub.add_parser("fingerprint", help="content fingerprints of warehouse models")
+    fp.add_argument("--models", nargs="*", help="e.g. marts.fct_order_item (default: all)")
+    fp.set_defaults(func=cmd_fingerprint)
     return p
 
 

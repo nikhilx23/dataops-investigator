@@ -35,7 +35,15 @@ def load_source(ds: Dataset, *, replace: bool = False) -> dict[str, int]:
                 "pass --replace to reload the synthetic source"
             )
         if replace:
-            conn.execute("TRUNCATE " + ", ".join(f"shop.{t}" for t in reversed(TABLE_ORDER)))
+            conn.execute(
+                "TRUNCATE "
+                + ", ".join(f"shop.{t}" for t in reversed(TABLE_ORDER))
+                + " RESTART IDENTITY"
+            )
+        # Historical bulk load: the generator supplies the complete, ordered product change
+        # log itself, so the trigger that appends to it on live changes is paused for this
+        # transaction only (the owner role may disable its own table's triggers).
+        conn.execute("ALTER TABLE shop.products DISABLE TRIGGER products_log_version")
         for table in TABLE_ORDER:
             rows = ds.tables[table]
             if not rows:
@@ -48,5 +56,10 @@ def load_source(ds: Dataset, *, replace: bool = False) -> dict[str, int]:
                 for row in rows:
                     copy.write_row([row[c] for c in cols])
             counts[table] = len(rows)
+        conn.execute("ALTER TABLE shop.products ENABLE TRIGGER products_log_version")
+        conn.execute(
+            "SELECT setval(pg_get_serial_sequence('shop.product_versions', 'product_version_id'),"
+            " (SELECT COALESCE(MAX(product_version_id), 0) + 1 FROM shop.product_versions), false)"
+        )
     log.info("loaded synthetic source: %s", counts)
     return counts

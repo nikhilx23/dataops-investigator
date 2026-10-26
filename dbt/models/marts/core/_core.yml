@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: dim_date
+    columns:
+      - name: date_key
+        data_tests: [unique, not_null]
+  - name: dim_customer
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+  - name: dim_warehouse
+    columns:
+      - name: warehouse_id
+        data_tests: [unique, not_null]
+  - name: dim_product_history
+    description: SCD2 product versions from the ordered source change log.
+    columns:
+      - name: product_version_key
+        data_tests: [unique, not_null]
+      - name: valid_from
+        data_tests: [not_null]
+  - name: fct_order_item
+    meta: {grain: order line}
+    columns:
+      - name: order_item_id
+        data_tests: [unique, not_null]
+      - name: product_version_key
+        description: Product version valid when the order was placed (point-in-time).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_product_history'), field: product_version_key}
+      - name: customer_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_customer'), field: customer_id}
+      - name: order_date_key
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_key}
+  - name: fct_payment_transaction
+    meta: {grain: money movement}
+    columns:
+      - name: transaction_id
+        data_tests: [unique, not_null]
+      - name: transaction_type
+        data_tests:
+          - accepted_values:
+              arguments: {values: ['capture', 'refund']}
+      - name: date_key
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_key}
+  - name: fct_inventory_movement
+    meta: {grain: stock movement}
+    columns:
+      - name: movement_id
+        data_tests: [unique, not_null]
+      - name: movement_type
+        data_tests:
+          - accepted_values:
+              arguments: {values: ['restock', 'allocation', 'allocation_release', 'shipment']}
+      - name: warehouse_id
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_warehouse'), field: warehouse_id}
+  - name: fct_shipment_event
+    meta: {grain: shipment event}
+    columns:
+      - name: shipment_event_id
+        data_tests: [unique, not_null]
+      - name: event_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['label_created', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered']

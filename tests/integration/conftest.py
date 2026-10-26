@@ -32,8 +32,9 @@ def pytest_collection_modifyitems(items):
             item.add_marker(pytest.mark.integration)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def test_databases():
+    """Fresh, isolated databases for each test module."""
     load_dotenv()
     if not os.environ.get("DATAOPS_PG_ADMIN_PASSWORD"):
         pytest.skip("DATAOPS_PG_ADMIN_PASSWORD not set; integration tests need PostgreSQL")

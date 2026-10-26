@@ -32,6 +32,30 @@ Three independent comparisons, persisted to `reliability.reconciliation_results`
 source vs raw row counts, source SQL vs mart, generator ledger vs mart. A failed or errored
 check is recorded as `fail`/`error`, never as a pass.
 
+## Product history (SCD2) — implemented, tested
+
+- Every product attribute change is appended to `shop.product_versions` in the same
+  transaction as the change; no-op updates add nothing. The batch path therefore receives
+  every intermediate version, in order (tested: two price changes between two extractions
+  both appear in `dim_product_history`).
+- `dim_product_history` intervals are `[valid_from, valid_to)`, contiguous, gap-free in
+  version numbers, with exactly one current version per product (singular test).
+- `fct_order_item` uses the version valid at `placed_at`; a test asserts the line price equals
+  that version's list price (437 of 3,635 demo lines were sold at a price that is no longer
+  current, so the point-in-time join is load-bearing).
+
+## Incremental facts — implemented, tested
+
+- `delete+insert` on the fact key for every row whose change cursor is within
+  `incremental_lookback_days` (default 3) of the latest processed cursor. The cursor of an
+  order line includes its order row, so status-only changes propagate.
+- Equivalence: after day-by-day incremental runs (with a late update in between), each fact
+  and mart fingerprint equals the fingerprint after `--full-refresh` (integration test and
+  `scripts/demo_m2.py`).
+- **Not guaranteed**: a change whose cursor is older than the lookback window when it lands
+  (e.g. a back-dated source correction) is not picked up incrementally; it needs a bounded
+  backfill or full refresh. Reconciliation is what detects this case.
+
 ## Not implemented yet
 
 CDC (Debezium → Kafka), streaming (Spark Structured Streaming), Bronze/Silver Delta tables,

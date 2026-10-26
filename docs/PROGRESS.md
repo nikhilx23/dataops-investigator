@@ -78,18 +78,49 @@ with the exact delta then corrected by an incremental run**, and role privilege 
 - Compose runtime, app image build and the CI workflow are **not verified** (registry blocked).
 - Image tags are pinned but not digest-pinned.
 
-## Milestone 2: data engineering depth — next
+## Milestone 2: data engineering depth — **in progress**
 
-Planned order (to keep each step verifiable here):
-1. Warehouse modeling on the batch path (verifiable locally): `dim_date`, `dim_customer`,
-   `dim_warehouse`, `dim_product_history` (SCD2 from captured versions), facts
-   (`fct_order_item`, `fct_payment_transaction`, `fct_inventory_movement`,
-   `fct_shipment_event`), remaining marts, incremental models and a full-refresh vs
-   incremental equivalence check.
-2. Full-profile services (Kafka KRaft, Debezium PostgreSQL connector, Spark 4.2 + Delta 4.4.1,
-   Airflow) added to Compose with pinned versions; statically validated here, **runtime
-   blocked** in this environment until images and Maven artifacts are reachable.
-3. Spark Bronze/Silver jobs and the Silver → warehouse staging publisher.
+### 2a. Warehouse modeling on the batch path — **verified**
+- Data model defined first: [docs/data_model.md](data_model.md) (grains, keys, measures,
+  update/deletion policy, double-counting rules).
+- Source migration 0002: ordered product change log `shop.product_versions` (trigger-maintained).
+  Migration 0003: `sim.clock` for the time simulator. Rationale: [ADR 0003](adr/0003-source-change-log-and-time-simulation.md).
+- Time simulator (`dataops simulate`): replays every row's state history; replay-to-end equals
+  the final dataset (unit-tested, `tiny` and `small`).
+- dbt: 11 staging views, 2 intermediate views, `dim_date`, `dim_customer`, `dim_warehouse`,
+  `dim_product_history` (SCD2), incremental facts `fct_order_item` (point-in-time product
+  version), `fct_payment_transaction`, `fct_inventory_movement`, `fct_shipment_event`, marts
+  `mart_order_fulfillment`, `mart_inventory_position`, `mart_payment_reconciliation`
+  (+ existing `mart_daily_revenue`). Singular tests: SCD2 intervals, point-in-time price,
+  facts vs mart consistency, inventory non-negative, payment reconciliation rules.
+- Fingerprints (`dataops fingerprint`) and inventory ledger reconciliation.
+- Explicit destructive reset of the synthetic environment (`dataops reset --confirm-synthetic-reset`).
+
+| Command | Result |
+|---|---|
+| `dbt build` (final-state data) | PASS=96 WARN=0 ERROR=0 |
+| `python scripts/demo_m2.py --reset` | 30 simulated days, 31,604 raw versions (daily source changes = rows inserted every day), 6 incremental dbt builds; full-refresh fingerprints **equal** for all 9 models; 4/4 reconciliations pass; 89 s wall clock |
+| `pytest -q` | 40 passed (27 unit, 13 integration) |
+| `bash scripts/demo_m1.sh` after the changes | 4/4 reconciliations pass |
+
+Integration tests added: incremental absorbs a late order-status update; full refresh equals
+incremental for all fingerprinted models; marts reconcile with source and ledger; SCD2 keeps
+two intermediate price changes made between extractions; no-op updates create no version.
+
+Found by verification: day-by-day runs against a one-shot final-state source produced 13
+orphan payments (orders became visible only at their final update). Fixed by the simulator
+(ADR 0003), not by weakening the relationship tests.
+
+### 2b. Full-profile streaming and CDC — **not started; runtime blocked here**
+Kafka (KRaft), Debezium PostgreSQL connector, Spark 4.2 + Delta 4.4.1 Bronze/Silver jobs,
+Silver → warehouse publisher, Airflow DAGs. These can be written and statically validated in
+this environment but not run (container registries and Maven Central are blocked).
+
+### Next actions
+1. Write full-profile Compose services with pinned versions and compatibility notes.
+2. Implement Spark Bronze/Silver jobs with unit tests that run on local PySpark where possible
+   (Delta itself needs Maven artifacts: verification deferred to a machine with access).
+3. Airflow DAGs for the batch path already verified here (extraction, backfill, dbt, reconcile).
 
 ## Blockers
 - Container registries and Maven Central are not reachable from the build environment.

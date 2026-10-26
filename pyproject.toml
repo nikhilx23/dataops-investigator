@@ -51,6 +51,7 @@ ignore = ["S101", "S311"]  # asserts in tests; random is used for deterministic 
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "B905"]
+"scripts/**" = ["S603", "S607"]  # fixed, trusted commands (dbt, psql)
 
 [tool.mypy]
 python_version = "3.12"

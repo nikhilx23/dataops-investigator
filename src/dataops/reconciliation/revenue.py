@@ -315,3 +315,49 @@ def reconcile_row_counts(correlation_id: str, persist: bool = True) -> Reconcili
     except Exception as exc:
         log.exception("reconciliation %s errored", check)
         return _error(check, "source_vs_raw", exc, correlation_id, persist)
+
+
+INVENTORY_METRICS = ["on_hand", "allocated", "available"]
+MART_INVENTORY_SQL = """
+select product_id, warehouse_id, on_hand_units, allocated_units, available_units
+from marts.mart_inventory_position
+"""
+
+
+def reconcile_inventory_ledger_vs_mart(
+    ledger: dict[str, Any], correlation_id: str, persist: bool = True
+) -> ReconciliationResult:
+    """Per product x warehouse stock position: generator ledger vs mart_inventory_position."""
+    check = "inventory.position.ledger_vs_mart"
+    try:
+        with connect(Role.WH_READER, application_name="dataops-reconcile") as conn:
+            mart = {
+                f"{p}:{w}": {"on_hand": int(oh), "allocated": int(al), "available": int(av)}
+                for p, w, oh, al, av in conn.execute(MART_INVENTORY_SQL).fetchall()
+            }
+        expected = ledger["inventory_positions"]
+        compared, mismatches = compare_daily(expected, mart, INVENTORY_METRICS)
+        result = ReconciliationResult(
+            str(uuid.uuid4()),
+            check,
+            "ledger_vs_mart",
+            "pass" if not mismatches else "fail",
+            compared,
+            len(mismatches),
+            {m: sum(v[m] for v in expected.values()) for m in INVENTORY_METRICS},
+            {m: sum(v[m] for v in mart.values()) for m in INVENTORY_METRICS},
+            mismatches[:MAX_MISMATCH_SAMPLE],
+            {"ledger_seed": ledger["seed"], "dataset_checksum": ledger["dataset_checksum"]},
+        )
+        if persist:
+            _persist(
+                result,
+                "1",
+                "warehouse.marts.mart_inventory_position",
+                _fingerprint(MART_INVENTORY_SQL, ledger["dataset_checksum"]),
+                correlation_id,
+            )
+        return result
+    except Exception as exc:
+        log.exception("reconciliation %s errored", check)
+        return _error(check, "ledger_vs_mart", exc, correlation_id, persist)

@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import random
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -24,6 +24,7 @@ TABLE_ORDER = [
     "warehouses",
     "customers",
     "products",
+    "product_versions",
     "orders",
     "order_items",
     "payments",
@@ -36,6 +37,7 @@ PRIMARY_KEYS = {
     "warehouses": "warehouse_id",
     "customers": "customer_id",
     "products": "product_id",
+    "product_versions": "product_version_id",
     "orders": "order_id",
     "order_items": "order_item_id",
     "payments": "payment_id",
@@ -125,15 +127,9 @@ class Dataset:
     start: datetime
     end: datetime
     tables: dict[str, list[Row]]
-    # Not loaded into the source: complete product price history (for SCD expectations).
-    product_versions: list[Row] = field(default_factory=list)
 
     def checksum(self) -> str:
-        return hashlib.sha256(
-            canonical_json(
-                {"tables": self.tables, "product_versions": self.product_versions}
-            ).encode()
-        ).hexdigest()
+        return hashlib.sha256(canonical_json({"tables": self.tables}).encode()).hexdigest()
 
     def row_counts(self) -> dict[str, int]:
         return {t: len(self.tables[t]) for t in TABLE_ORDER}
@@ -210,14 +206,20 @@ def generate(
             timeline.sort()
         price_timeline[pid] = timeline
         for idx, (valid_from, p) in enumerate(timeline):
-            valid_to = timeline[idx + 1][0] if idx + 1 < len(timeline) else None
+            # Mirrors the source change log written by trigger shop.log_product_version().
             product_versions.append(
                 {
+                    "product_version_id": len(product_versions) + 1,
                     "product_id": pid,
                     "version": idx + 1,
+                    "sku": f"SKU-{pid:05d}",
+                    "name": name,
+                    "category": category,
                     "list_price_cents": p,
+                    "is_active": True,
                     "valid_from": valid_from,
-                    "valid_to": valid_to,
+                    "recorded_at": valid_from,
+                    "updated_at": valid_from,
                 }
             )
         products.append(
@@ -599,6 +601,7 @@ def generate(
         "warehouses": warehouses,
         "customers": customers,
         "products": products,
+        "product_versions": product_versions,
         "orders": orders,
         "order_items": items,
         "payments": payments,
@@ -607,4 +610,4 @@ def generate(
         "shipments": shipments,
         "shipment_events": events,
     }
-    return Dataset(seed, prof, start, end, tables, product_versions)
+    return Dataset(seed, prof, start, end, tables)

@@ -17,3 +17,21 @@ models:
         data_tests: [not_null]
       - name: net_collected_cents
         data_tests: [not_null]
+
+  - name: mart_order_fulfillment
+    meta: {owner: operations-analytics, grain: order, dashboards: [fulfillment_overview]}
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+
+  - name: mart_inventory_position
+    meta: {owner: supply-chain-analytics, grain: product x warehouse, dashboards: [inventory_overview]}
+    data_tests:
+      - unique_combination:
+          arguments: {columns: [product_id, warehouse_id]}
+
+  - name: mart_payment_reconciliation
+    meta: {owner: finance-analytics, grain: order, dashboards: [finance_reconciliation]}
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]

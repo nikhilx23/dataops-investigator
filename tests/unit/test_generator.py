@@ -99,8 +99,8 @@ def test_scenario_coverage(ds_small):
         (e["received_at"] - e["event_at"]).total_seconds() > 6 * 3600 for e in t["shipment_events"]
     ), "late-arriving shipment events"
     assert any(
-        len([v for v in ds_small.product_versions if v["product_id"] == pid]) > 1
-        for pid in {v["product_id"] for v in ds_small.product_versions}
+        len([v for v in ds_small.tables["product_versions"] if v["product_id"] == pid]) > 1
+        for pid in {v["product_id"] for v in ds_small.tables["product_versions"]}
     ), "price changes"
 
 

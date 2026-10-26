@@ -6,7 +6,8 @@ A portfolio project that builds an operational data platform for a *fictional* c
 company, then a reliability and AI investigation layer around it. **All data is synthetic**;
 this is a simulated environment, not a real company's production platform.
 
-> **Status: Milestone 1 complete (vertical slice).** See [docs/PROGRESS.md](docs/PROGRESS.md)
+> **Status: Milestone 1 complete; Milestone 2 warehouse modeling verified (batch path);
+> streaming, CDC and everything after are not built yet.** See [docs/PROGRESS.md](docs/PROGRESS.md)
 > for exactly what is implemented, verified, planned, and blocked. Nothing below claims more.
 
 ## The problem
@@ -70,6 +71,16 @@ DATAOPS_RUNTIME=docker bash scripts/demo_m1.sh         # PowerShell: scripts/dem
 bash scripts/down.sh                                   # keeps volumes; --delete-volumes removes them
 ```
 
+## Milestone 2 demo: a simulated month of daily operations
+
+```bash
+python scripts/demo_m2.py --reset      # DESTRUCTIVE for the synthetic demo data only
+```
+
+The source advances one simulated day at a time; each day is extracted, dbt runs
+incrementally every 5 days, then the incremental facts are compared with a full refresh and
+reconciled against the source and the generator ledger.
+
 ## Tests
 
 ```bash
@@ -85,5 +96,5 @@ ruff check . && ruff format --check . && mypy
 - The Compose stack and CI workflow are written and statically validated but have not run in
   this build environment (container registries were not reachable).
 - Reloading the source with a *different* seed requires resetting the warehouse raw zone.
-- Everything from Milestone 2 onward (CDC, streaming, lakehouse, Airflow, reliability
-  platform, AI investigator, recovery, dashboard) is not built yet.
+- Not built yet: CDC, streaming, lakehouse, Airflow, the reliability platform, the AI
+  investigator, recovery and the dashboard.

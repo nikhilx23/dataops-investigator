@@ -9,6 +9,11 @@ test-paths: ["tests"]
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
+vars:
+  # Incremental facts re-process keys whose source version changed within this window,
+  # so late updates replace earlier rows instead of being missed or duplicated.
+  incremental_lookback_days: 3
+
 flags:
   send_anonymous_usage_stats: false
 
@@ -17,6 +22,9 @@ models:
     +persist_docs: {relation: true, columns: true}
     staging:
       +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
       +materialized: view
     marts:
       +schema: marts
