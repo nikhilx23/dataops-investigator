@@ -69,6 +69,38 @@ jobs:
       - name: Milestone 1 demo
         run: bash scripts/demo_m1.sh
 
+  spark-and-dags:
+    # Contract validation on local Spark (jars from Maven Central) and Airflow DAG parsing.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e ".[dbt,full,dev]"
+      - name: Spark validation tests
+        run: pytest tests/spark -q
+      - name: Airflow DAGs import cleanly (throwaway SQLite metadata)
+        env:
+          AIRFLOW_HOME: /tmp/afhome
+          AIRFLOW__CORE__DAGS_FOLDER: orchestration/dags
+          AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+        run: |
+          python -m venv /tmp/af
+          /tmp/af/bin/pip install "apache-airflow[postgres]==3.3.2" \
+            -c orchestration/constraints-airflow-3.3.2-py3.13.txt
+          /tmp/af/bin/airflow db migrate
+          /tmp/af/bin/airflow dags reserialize
+          test "$(/tmp/af/bin/airflow dags list -o plain | grep -c '^dataops_')" -eq 5
+          /tmp/af/bin/airflow dags list-import-errors | tee /tmp/import-errors.txt
+          grep -q "No data found" /tmp/import-errors.txt
+
   compose-and-scripts:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -19,3 +19,15 @@ sources:
         columns:
           - name: batch_id
             data_tests: [unique, not_null]
+
+  - name: cdc_pub
+    description: >
+      Curated Silver snapshots published from the lakehouse (full profile, CDC path).
+      Read only when dbt runs with --vars '{source_path: cdc}'.
+    schema: cdc_pub
+    tables:
+      - name: publications
+        description: Publication manifests with Silver Delta versions and checksums.
+        loaded_at_field: committed_at
+      - name: records
+        description: One row per live source key of the latest publication.

@@ -21,6 +21,12 @@ dbt = [
   "dbt-core==1.12.6",
   "dbt-postgres==1.11.0",
 ]
+full = [
+  "pyspark==4.2.0",
+  "delta-spark==4.4.1",
+  "confluent-kafka==2.16.0",
+  "httpx==0.28.1",
+]
 dev = [
   "pytest==9.1.1",
   "ruff==0.17.2",
@@ -38,6 +44,7 @@ where = ["src"]
 testpaths = ["tests"]
 markers = [
   "integration: requires running PostgreSQL configured via DATAOPS_* environment variables",
+  "spark: requires Java 17/21 and the full extra (Spark/Delta jars resolved from Maven Central)",
 ]
 addopts = "-ra"
 

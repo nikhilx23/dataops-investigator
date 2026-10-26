@@ -20,21 +20,27 @@ means the version set was resolved by pip from published package metadata (offic
 | Component | Version | Status | Evidence |
 |---|---|---|---|
 | PostgreSQL | 16 | verified (16.15, Ubuntu package) | local server used by all M1 checks |
-| pgvector | 0.6.0 locally, 0.8.0 image | extension created locally (0.6.0) | image tag not pulled (see blockers) |
-| Apache Spark (pyspark) | 4.2.0 | resolved | `delta-spark 4.4.1` requires `pyspark>=4.0.1,<=4.2.0` |
-| Delta Lake (delta-spark) | 4.4.1 | resolved | Scala 2.13 artifact `io.delta:delta-spark_2.13:4.4.1` |
-| Java | 21 | available locally (OpenJDK 21.0.12) | Spark 4.x supports Java 17 and 21 |
-| Apache Kafka, Debezium, Airflow | to pin in Milestone 2 | not yet selected | each will be pinned with its documented compatibility before use |
+| pgvector | 0.6.0 (native), 0.8.0 (image) | verified (extension created on both) | full profile runs on the 0.8.0 image |
+| Apache Spark (pyspark) | 4.2.0 | **verified** (streaming jobs, tests) | `delta-spark 4.4.1` requires `pyspark>=4.0.1,<=4.2.0`; its POM is built against Spark 4.2.0 |
+| Delta Lake (delta-spark) | 4.4.1 | **verified** | Scala 2.13 artifacts from Maven Central |
+| spark-sql-kafka-0-10_2.13 | 4.2.0 | **verified** | matches Spark |
+| Java | 21 | **verified** (OpenJDK 21.0.12) | Spark 4.x supports Java 17 and 21 |
+| Kafka | 3.9.0 (`quay.io/debezium/kafka:3.0.8.Final`, KRaft) | **verified** | image bundles kafka_2.13-3.9.0 |
+| Debezium PostgreSQL connector | 3.0.8.Final (`quay.io/debezium/connect:3.0.8.Final`) | **verified** | pgoutput against PostgreSQL 16 |
+| confluent-kafka (Python) | 2.16.0 | **verified** | |
+| Airflow | 3.3.2 + official constraints for Python 3.13 (`orchestration/`) | **verified** (scheduler runs) | providers: standard 1.19.0, postgres 7.0.2 |
 
 ## Container images
 
 | Image | Tag | Status |
 |---|---|---|
-| pgvector/pgvector | 0.8.0-pg16 | **not pull-verified**: Docker Hub is blocked in the build sandbox |
-| python | 3.12.11-slim-bookworm | **not pull-verified** (same reason) |
+| pgvector/pgvector | 0.8.0-pg16 | **verified** (pulled, runs the full profile) |
+| quay.io/debezium/kafka | 3.0.8.Final | **verified** |
+| quay.io/debezium/connect | 3.0.8.Final | **verified** |
+| python | 3.12.11-slim-bookworm | **not verified**: Docker Hub answered HTTP 429 (anonymous pull rate limit) on every attempt from the build network |
 
-Tags are pinned; digests will be pinned once the images can be pulled (CI job
-`compose-and-scripts` builds the app image on GitHub-hosted runners).
+Images that were pulled and run here are pinned by digest in docker-compose.yml. The python
+base image stays tag-pinned until it can be pulled (CI job `compose-and-scripts` builds it).
 
 ## Why not newer/older
 

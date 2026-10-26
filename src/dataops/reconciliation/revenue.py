@@ -276,11 +276,32 @@ group by r.source_table
 """
 
 
-def reconcile_row_counts(correlation_id: str, persist: bool = True) -> ReconciliationResult:
-    """Distinct source keys present in committed raw batches vs live source row counts.
-    Equal counts are expected right after a full catch-up ingestion; source rows deleted
-    after extraction make raw larger (batch cannot see deletes)."""
-    check = "ingestion.row_counts.source_vs_raw"
+CDC_PUB_COUNT_SQL = """
+select r.source_table, count(*)
+from cdc_pub.records r
+where r.publication_id = (select publication_id from cdc_pub.publications
+                          order by committed_at desc limit 1)
+group by r.source_table
+"""
+
+
+def reconcile_row_counts(
+    correlation_id: str, persist: bool = True, source_path: str = "batch"
+) -> ReconciliationResult:
+    """Live source row counts vs the warehouse input dbt reads.
+
+    batch: distinct keys in committed raw batches. Equal right after a full catch-up;
+           source rows deleted after extraction make raw larger (batch cannot see deletes).
+    cdc:   rows of the latest committed Silver publication (deletes are applied).
+    """
+    if source_path not in ("batch", "cdc"):
+        raise ValueError("source_path must be 'batch' or 'cdc'")
+    target_sql = RAW_COUNT_SQL if source_path == "batch" else CDC_PUB_COUNT_SQL
+    comparison = "source_vs_raw" if source_path == "batch" else "source_vs_cdc_pub"
+    check = f"ingestion.row_counts.{comparison}"
+    dataset = (
+        "warehouse.raw.source_records" if source_path == "batch" else "warehouse.cdc_pub.records"
+    )
     try:
         with connect(Role.SRC_READER, application_name="dataops-reconcile") as src:
             source = {
@@ -289,12 +310,12 @@ def reconcile_row_counts(correlation_id: str, persist: bool = True) -> Reconcili
                 if t in PRIMARY_KEYS
             }
         with connect(Role.WH_READER, application_name="dataops-reconcile") as wh:
-            raw = {t: {"rows": int(n)} for t, n in wh.execute(RAW_COUNT_SQL).fetchall()}
+            raw = {t: {"rows": int(n)} for t, n in wh.execute(target_sql).fetchall()}
         compared, mismatches = compare_daily(source, raw, ["rows"])
         result = ReconciliationResult(
             str(uuid.uuid4()),
             check,
-            "source_vs_raw",
+            comparison,
             "pass" if not mismatches else "fail",
             compared,
             len(mismatches),
@@ -307,14 +328,14 @@ def reconcile_row_counts(correlation_id: str, persist: bool = True) -> Reconcili
             _persist(
                 result,
                 "1",
-                "warehouse.raw.source_records",
-                _fingerprint(SOURCE_COUNT_SQL, RAW_COUNT_SQL),
+                dataset,
+                _fingerprint(SOURCE_COUNT_SQL, target_sql),
                 correlation_id,
             )
         return result
     except Exception as exc:
         log.exception("reconciliation %s errored", check)
-        return _error(check, "source_vs_raw", exc, correlation_id, persist)
+        return _error(check, comparison, exc, correlation_id, persist)
 
 
 INVENTORY_METRICS = ["on_hand", "allocated", "available"]

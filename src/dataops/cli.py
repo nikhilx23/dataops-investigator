@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -168,7 +169,7 @@ def cmd_reconcile(args: argparse.Namespace) -> int:
     correlation_id = args.correlation_id or str(uuid.uuid4())
     persist = not args.no_persist
     results = [
-        revenue.reconcile_row_counts(correlation_id, persist),
+        revenue.reconcile_row_counts(correlation_id, persist, args.source_path),
         revenue.reconcile_source_vs_mart(correlation_id, persist),
     ]
     if args.ledger:
@@ -184,6 +185,61 @@ def cmd_fingerprint(args: argparse.Namespace) -> int:
 
     prints = fingerprint_all(args.models or None)
     _emit({m: {"rows": f.rows, "md5": f.md5} for m, f in prints.items()})
+    return 0
+
+
+def cmd_stream(args: argparse.Namespace) -> int:
+    from dataops.streaming import jobs
+
+    if args.stream_cmd == "replay":
+        if not args.confirm_rebuild_from_bronze:
+            raise SystemExit(
+                "replay deletes Silver and its checkpoints and rebuilds them from "
+                "Bronze; re-run with --confirm-rebuild-from-bronze"
+            )
+        _emit(jobs.replay_silver())
+        return 0
+    if args.stream_cmd == "reconcile":
+        from dataops.streaming import reconcile
+        from dataops.streaming.session import get_spark
+
+        r = reconcile.reconcile(get_spark(), args.correlation_id or str(uuid.uuid4()))
+        _emit(r.as_dict())
+        return 0 if r.status == "pass" else 1
+    report = jobs.run(
+        args.jobs,
+        available_now=not args.continuous,
+        processing_time=args.processing_time,
+        run_seconds=args.run_seconds,
+    )
+    for v in report.values():
+        v.pop("last_progress", None)
+    _emit(report)
+    return 0
+
+
+def cmd_publish(args: argparse.Namespace) -> int:
+    from dataops.streaming.publish import publish
+    from dataops.streaming.session import get_spark
+
+    _emit(publish(get_spark("dataops-publisher"), args.correlation_id or str(uuid.uuid4())))
+    return 0
+
+
+def cmd_cdc(args: argparse.Namespace) -> int:
+    from dataops.cdc import connector
+
+    if args.cdc_cmd == "register":
+        connector.register()
+        _emit(connector.wait_running())
+    elif args.cdc_cmd == "status":
+        _emit(connector.status())
+    elif args.cdc_cmd == "reconcile":
+        from dataops.cdc import reconcile
+
+        r = reconcile.reconcile(args.correlation_id or str(uuid.uuid4()))
+        _emit(r.as_dict())
+        return 0 if r.status == "pass" else 1
     return 0
 
 
@@ -279,8 +335,42 @@ def build_parser() -> argparse.ArgumentParser:
     rec = sub.add_parser("reconcile", help="reconcile source, ledger and revenue mart")
     rec.add_argument("--ledger", help="path to an expected-results ledger JSON")
     rec.add_argument("--no-persist", action="store_true")
+    rec.add_argument(
+        "--source-path",
+        choices=["batch", "cdc"],
+        default=os.environ.get("DATAOPS_SOURCE_PATH", "batch"),
+        help="which warehouse input to count against the source",
+    )
     rec.add_argument("--correlation-id")
     rec.set_defaults(func=cmd_reconcile)
+
+    cdc = sub.add_parser("cdc", help="Debezium change data capture (full profile)")
+    cdc.add_argument("cdc_cmd", choices=["register", "status", "reconcile"])
+    cdc.add_argument("--correlation-id")
+    cdc.set_defaults(func=cmd_cdc)
+
+    stm = sub.add_parser("stream", help="Spark Bronze/Silver/event jobs (full profile)")
+    stm.add_argument("stream_cmd", choices=["run", "replay", "reconcile"])
+    stm.add_argument(
+        "--jobs",
+        nargs="+",
+        default=["bronze", "silver", "events"],
+        choices=["bronze", "silver", "events"],
+    )
+    stm.add_argument(
+        "--continuous",
+        action="store_true",
+        help="processing-time triggers instead of process-available-and-stop",
+    )
+    stm.add_argument("--processing-time", default="10 seconds")
+    stm.add_argument("--run-seconds", type=float)
+    stm.add_argument("--confirm-rebuild-from-bronze", action="store_true")
+    stm.add_argument("--correlation-id")
+    stm.set_defaults(func=cmd_stream)
+
+    pub = sub.add_parser("publish", help="publish curated Silver into the warehouse (cdc_pub)")
+    pub.add_argument("--correlation-id")
+    pub.set_defaults(func=cmd_publish)
 
     rst = sub.add_parser("reset", help="DESTRUCTIVE: empty the synthetic demo environment")
     rst.add_argument("--confirm-synthetic-reset", action="store_true")

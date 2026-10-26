@@ -1,0 +1,151 @@
+# Source data contract for the synthetic commerce operational database, version 1.
+# Used by Silver validation (records that violate it are quarantined with a reason) and,
+# from Milestone 3, by schema-compatibility and quality checks.
+#
+# Types: int (64-bit integer), text, bool, timestamp (ISO-8601 UTC), char2, char3.
+# required: the field must be present and non-null in every inserted/updated record.
+# allowed: closed set of values. min: inclusive lower bound for numbers.
+# Compatibility rule for v1 -> v2: adding nullable columns is compatible; removing a column,
+# changing a type, or making a nullable column required is breaking.
+contract: shop
+version: 1
+owner: commerce-platform
+currency: USD
+money_unit: cents (integer minor units)
+timestamps: UTC
+tables:
+  warehouses:
+    key: warehouse_id
+    freshness_hours: 720
+    columns:
+      warehouse_id: {type: int, required: true}
+      code: {type: text, required: true}
+      name: {type: text, required: true}
+      region: {type: text, required: true}
+      created_at: {type: timestamp, required: true}
+      updated_at: {type: timestamp, required: true}
+  customers:
+    key: customer_id
+    freshness_hours: 48
+    columns:
+      customer_id: {type: int, required: true}
+      email: {type: text, required: true}
+      full_name: {type: text, required: true}
+      country_code: {type: char2, required: true}
+      created_at: {type: timestamp, required: true}
+      updated_at: {type: timestamp, required: true}
+  products:
+    key: product_id
+    freshness_hours: 168
+    columns:
+      product_id: {type: int, required: true}
+      sku: {type: text, required: true}
+      name: {type: text, required: true}
+      category: {type: text, required: true}
+      list_price_cents: {type: int, required: true, min: 0}
+      is_active: {type: bool, required: true}
+      created_at: {type: timestamp, required: true}
+      updated_at: {type: timestamp, required: true}
+  product_versions:
+    key: product_version_id
+    freshness_hours: 168
+    columns:
+      product_version_id: {type: int, required: true}
+      product_id: {type: int, required: true}
+      version: {type: int, required: true, min: 1}
+      sku: {type: text, required: true}
+      name: {type: text, required: true}
+      category: {type: text, required: true}
+      list_price_cents: {type: int, required: true, min: 0}
+      is_active: {type: bool, required: true}
+      valid_from: {type: timestamp, required: true}
+      recorded_at: {type: timestamp, required: true}
+      updated_at: {type: timestamp, required: true}
+  orders:
+    key: order_id
+    freshness_hours: 6
+    columns:
+      order_id: {type: int, required: true}
+      customer_id: {type: int, required: true}
+      status: {type: text, required: true,
+               allowed: [placed, paid, shipped, delivered, cancelled, refunded]}
+      currency: {type: char3, required: true, allowed: [USD]}
+      placed_at: {type: timestamp, required: true}
+      cancelled_at: {type: timestamp, required: false}
+      updated_at: {type: timestamp, required: true}
+  order_items:
+    key: order_item_id
+    freshness_hours: 6
+    columns:
+      order_item_id: {type: int, required: true}
+      order_id: {type: int, required: true}
+      line_number: {type: int, required: true, min: 1}
+      product_id: {type: int, required: true}
+      quantity: {type: int, required: true, min: 1}
+      unit_price_cents: {type: int, required: true, min: 0}
+      discount_cents: {type: int, required: true, min: 0}
+      created_at: {type: timestamp, required: true}
+      updated_at: {type: timestamp, required: true}
+  payments:
+    key: payment_id
+    freshness_hours: 6
+    columns:
+      payment_id: {type: int, required: true}
+      order_id: {type: int, required: true}
+      attempt_number: {type: int, required: true, min: 1}
+      status: {type: text, required: true, allowed: [pending, succeeded, failed, refunded]}
+      method: {type: text, required: true}
+      amount_cents: {type: int, required: true, min: 1}
+      created_at: {type: timestamp, required: true}
+      captured_at: {type: timestamp, required: false}
+      failure_reason: {type: text, required: false}
+      updated_at: {type: timestamp, required: true}
+  refunds:
+    key: refund_id
+    freshness_hours: 24
+    columns:
+      refund_id: {type: int, required: true}
+      payment_id: {type: int, required: true}
+      amount_cents: {type: int, required: true, min: 1}
+      reason: {type: text, required: true}
+      refunded_at: {type: timestamp, required: true}
+      updated_at: {type: timestamp, required: true}
+  inventory_movements:
+    key: movement_id
+    freshness_hours: 6
+    columns:
+      movement_id: {type: int, required: true}
+      product_id: {type: int, required: true}
+      warehouse_id: {type: int, required: true}
+      movement_type: {type: text, required: true,
+                      allowed: [restock, allocation, allocation_release, shipment]}
+      on_hand_delta: {type: int, required: true}
+      allocated_delta: {type: int, required: true}
+      reference_order_id: {type: int, required: false}
+      occurred_at: {type: timestamp, required: true}
+      updated_at: {type: timestamp, required: true}
+  shipments:
+    key: shipment_id
+    freshness_hours: 12
+    columns:
+      shipment_id: {type: int, required: true}
+      order_id: {type: int, required: true}
+      warehouse_id: {type: int, required: true}
+      carrier: {type: text, required: true}
+      tracking_number: {type: text, required: true}
+      status: {type: text, required: true,
+               allowed: [label_created, picked_up, in_transit, out_for_delivery, delivered]}
+      created_at: {type: timestamp, required: true}
+      updated_at: {type: timestamp, required: true}
+  shipment_events:
+    key: shipment_event_id
+    event_time: event_at
+    freshness_hours: 12
+    columns:
+      shipment_event_id: {type: int, required: true}
+      shipment_id: {type: int, required: true}
+      event_type: {type: text, required: true,
+                   allowed: [label_created, picked_up, in_transit, out_for_delivery, delivered]}
+      event_at: {type: timestamp, required: true}
+      received_at: {type: timestamp, required: true}
+      updated_at: {type: timestamp, required: true}

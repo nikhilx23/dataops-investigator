@@ -78,7 +78,7 @@ with the exact delta then corrected by an incremental run**, and role privilege 
 - Compose runtime, app image build and the CI workflow are **not verified** (registry blocked).
 - Image tags are pinned but not digest-pinned.
 
-## Milestone 2: data engineering depth — **in progress**
+## Milestone 2: data engineering depth — **complete**
 
 ### 2a. Warehouse modeling on the batch path — **verified**
 - Data model defined first: [docs/data_model.md](data_model.md) (grains, keys, measures,
@@ -111,19 +111,63 @@ Found by verification: day-by-day runs against a one-shot final-state source pro
 orphan payments (orders became visible only at their final update). Fixed by the simulator
 (ADR 0003), not by weakening the relationship tests.
 
-### 2b. Full-profile streaming and CDC — **not started; runtime blocked here**
-Kafka (KRaft), Debezium PostgreSQL connector, Spark 4.2 + Delta 4.4.1 Bronze/Silver jobs,
-Silver → warehouse publisher, Airflow DAGs. These can be written and statically validated in
-this environment but not run (container registries and Maven Central are blocked).
+### 2b. Full profile: CDC, Kafka, Spark + Delta, publication, Airflow — **verified** (2026-10-26)
 
-### Next actions
-1. Write full-profile Compose services with pinned versions and compatibility notes.
-2. Implement Spark Bronze/Silver jobs with unit tests that run on local PySpark where possible
-   (Delta itself needs Maven artifacts: verification deferred to a machine with access).
-3. Airflow DAGs for the batch path already verified here (extraction, backfill, dbt, reconcile).
+Network: the user allowed Docker Hub, Quay and Maven Central for this environment. Docker Hub
+then returned HTTP 429 (anonymous pull rate limit) for most pulls, so Kafka runs from
+Debezium's Quay image. Everything below ran on the Compose stack (`DATAOPS_PG_PORT=5433`).
+
+Implemented: CDC role + publication (source migration 0004), Compose `kafka` + `connect`
+(digest-pinned), connector registration with the secret resolved in the worker
+(`dataops cdc register`), CDC materializer + column-level reconciliation, source contract
+`contracts/source/shop.v1.yaml`, Spark Bronze/Silver/event-time jobs (`dataops stream`),
+explicit replay, Silver publication to `cdc_pub` (warehouse migration 0002), dbt
+`source_path` switch, path-aware row-count reconciliation, 5 Airflow DAGs, full-profile
+scripts for both shells. Design: [ADR 0004](adr/0004-cdc-and-lakehouse.md), guarantees:
+[architecture/guarantees.md](architecture/guarantees.md), operations: [full_profile.md](full_profile.md).
+
+| Command | Result |
+|---|---|
+| `docker compose --profile full up -d --wait postgres kafka connect` | 3/3 healthy in 34 s |
+| `python scripts/verify_cdc.py` | 6/6 PASS: snapshot 2,539/2,539 rows column-equal; probe `c,u,u,d,tombstone` in LSN order; 936 changes made while Connect was stopped delivered after restart, 0 mismatches, 0 transport duplicates |
+| `python scripts/verify_streaming.py` | 6/6 PASS (A) Bronze 5,533 rows = distinct offsets = Kafka end offsets; Silver = source (5,034). (B) SIGKILL of the continuous job after 75 s with 1,239 changes outstanding, restart: Bronze 6,772 = offsets, Silver = source (6,013). (C) replay digest identical. (D) 10 events dropped by the 6 h watermark in incremental runs; correction recomputes from Silver |
+| `python -m dataops publish` | 6,013 rows, one transaction, 72 s (incl. Spark start) |
+| `dbt build --vars '{source_path: cdc}'` | PASS=96 WARN=0 ERROR=0 |
+| `python -m dataops reconcile --source-path cdc` | source vs cdc_pub 6,013 = 6,013; source vs mart 0 mismatches (booked 13,966,994 ¢) |
+| Airflow 3.3.2 standalone, real scheduler | 7 DAG runs, 19 task instances, all `success`: scheduled + manual publication (serialized by `max_active_runs=1`), asset-triggered dbt build and reconciliation (4 reconciliation rows `pass`), batch extract, backfill from params (3 windows each for orders, payments) |
+| `pytest -q` (native PostgreSQL) | 49 passed (30 unit, 13 integration, 6 Spark) |
+| ruff, mypy, shellcheck, PowerShell parser (11 scripts), `scripts/airflow.ps1 dags list-import-errors` | clean |
+
+Measured memory (2 vCPU / 7.8 GiB VM): Kafka 390–450 MiB, Connect 415–430 MiB, PostgreSQL
+56–117 MiB, Airflow (4 processes) 833 MiB RSS, Spark driver up to 1.2 GiB RSS while
+processing. Peak total ≈ 3 GiB; whole stack fits in 8 GiB when run in stages as here.
+Spark local mode spends ≈ 40 s starting per run; a Bronze+Silver+events pass over one
+simulated day takes 2–3 minutes on 2 vCPUs.
+
+Bugs found by verification and fixed:
+- Delete events were quarantined: under REPLICA IDENTITY DEFAULT Debezium fills non-key
+  columns of a delete image with placeholders ("" and epoch). Deletes are now validated on
+  the key only, and a soft delete keeps the row's last real values. Recovered with an
+  explicit replay from Bronze; reconciliation then passed.
+- `airflow standalone` failed because it spawns `airflow` from PATH: wrapper now exports it.
+- Airflow 3 Postgres asset URIs need host and port; fixed.
+- Kafka 3.9 rejected `0.0.0.0` in advertised listeners for the controller; listeners now bind
+  without a host.
+
+Not verified here (blocked or deferred):
+- App container image build (`python:3.12.11-slim-bookworm` from Docker Hub: HTTP 429 on
+  every attempt). The CLI ran from the host virtualenv instead; CI builds the image.
+- Continuous streaming as a supervised long-running service: verified only as a process run
+  for 75 s and killed; background processes do not survive between turns in this sandbox.
+- Grafana/Prometheus monitoring (planned with Milestone 3 observability).
+- Throughput/latency benchmarks (Milestone 6).
 
 ## Blockers
-- Container registries and Maven Central are not reachable from the build environment.
-  To unblock: allow those hosts for this environment (claude.ai → Settings → Capabilities on
-  a paid individual plan, or the organization admin), or run the full profile on a machine
-  with registry access.
+- Docker Hub anonymous pull rate limit (HTTP 429) from the build network blocks the app image
+  build. Workarounds: retry later, authenticate `docker login` with a free Docker account, or
+  rely on the CI build.
+
+## Next: Milestone 3 (reliability platform)
+Collectors for Airflow runs, dbt artifacts, Spark batch logs and Kafka lag; full reliability
+metadata model; contract and freshness checks; deterministic incident detection; lineage from
+the dbt manifest plus declared ingestion/publication/dashboard edges; impact analysis.

@@ -6,8 +6,9 @@ A portfolio project that builds an operational data platform for a *fictional* c
 company, then a reliability and AI investigation layer around it. **All data is synthetic**;
 this is a simulated environment, not a real company's production platform.
 
-> **Status: Milestone 1 complete; Milestone 2 warehouse modeling verified (batch path);
-> streaming, CDC and everything after are not built yet.** See [docs/PROGRESS.md](docs/PROGRESS.md)
+> **Status: Milestones 1 and 2 complete (batch path, warehouse models, CDC, Spark + Delta
+> lakehouse, Airflow), all verified; reliability platform, AI investigator, recovery and
+> dashboard are not built yet.** See [docs/PROGRESS.md](docs/PROGRESS.md)
 > for exactly what is implemented, verified, planned, and blocked. Nothing below claims more.
 
 ## The problem
@@ -62,7 +63,7 @@ revenue.daily.source_vs_mart             pass  rows=30 mismatches=0
 revenue.daily.ledger_vs_mart             pass  rows=30 mismatches=0
 ```
 
-### With Docker Compose (written, not yet run end to end — see PROGRESS)
+### With Docker Compose (the app image build is not yet verified — see PROGRESS)
 
 ```bash
 python scripts/init_env.py
@@ -81,6 +82,20 @@ The source advances one simulated day at a time; each day is extracted, dbt runs
 incrementally every 5 days, then the incremental facts are compared with a full refresh and
 reconciled against the source and the generator ledger.
 
+## Full profile: CDC, streaming, lakehouse, Airflow
+
+Kafka + Debezium capture every source change; Spark Structured Streaming lands them in Delta
+Bronze, validates them against a versioned contract into Silver (bad records quarantined with
+reasons), and a controlled publisher loads Silver into the warehouse in one transaction. dbt
+runs unchanged on either path (`--vars '{source_path: cdc}'`). Airflow 3 schedules the
+bounded work. Details, commands and measured memory: [docs/full_profile.md](docs/full_profile.md).
+
+```bash
+bash scripts/full_up.sh        # PowerShell: scripts/full_up.ps1
+bash scripts/demo_full.sh      # PowerShell: scripts/demo_full.ps1
+bash scripts/airflow.sh standalone
+```
+
 ## Tests
 
 ```bash
@@ -91,10 +106,10 @@ ruff check . && ruff format --check . && mypy
 
 ## Limitations (current)
 
-- Batch extraction cannot see hard deletes or intermediate versions between runs (CDC in the
-  full profile is meant to cover this; not implemented yet).
-- The Compose stack and CI workflow are written and statically validated but have not run in
-  this build environment (container registries were not reachable).
+- Batch extraction cannot see hard deletes or intermediate versions between runs; the full
+  profile's CDC path does.
+- The app container image has not been built here (Docker Hub rate limit); the full-profile
+  services ran in Compose and the CLI ran from the host virtualenv. The CI workflow has not
+  run yet (nothing has been pushed).
 - Reloading the source with a *different* seed requires resetting the warehouse raw zone.
-- Not built yet: CDC, streaming, lakehouse, Airflow, the reliability platform, the AI
-  investigator, recovery and the dashboard.
+- Not built yet: the reliability platform, the AI investigator, recovery and the dashboard.

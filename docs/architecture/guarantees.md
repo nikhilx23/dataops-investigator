@@ -56,8 +56,40 @@ check is recorded as `fail`/`error`, never as a pass.
   (e.g. a back-dated source correction) is not picked up incrementally; it needs a bounded
   backfill or full refresh. Reconciliation is what detects this case.
 
-## Not implemented yet
+## Source -> Kafka (Debezium CDC, full profile) — implemented, verified
 
-CDC (Debezium → Kafka), streaming (Spark Structured Streaming), Bronze/Silver Delta tables,
-Silver → warehouse publication, Airflow orchestration. Their guarantees will be documented
-here when they exist.
+| Property | Guarantee | Evidence |
+|---|---|---|
+| Initial snapshot | consistent with the slot's starting LSN; every row once as `op=r` | 2,539/2,539 rows, column-level match (`scripts/verify_cdc.py`) |
+| Inserts, updates, deletes | `c`, `u`, `d` + tombstone, in commit (LSN) order per table | probe row: `c,u,u,d,tombstone`, LSNs strictly increasing |
+| Ordering | one partition per table topic; per key, the highest LSN wins | `dataops.cdc.stream.materialize` |
+| Restart / resume | slot kept on stop; resumes from the last acknowledged LSN | 936 changes made while Connect was stopped all delivered; 0 mismatches |
+| Duplicates | at-least-once after restarts: *transport* duplicates share (key, LSN, op) and are dropped; equal business content with a new LSN is a real change | 0 transport duplicates observed in the verified restart |
+| Delete images | only the primary key is real (REPLICA IDENTITY DEFAULT); other fields are Debezium placeholders | caught by verification, see PROGRESS |
+| **Not guaranteed** | DDL is not captured; if the slot is invalidated (`max_slot_wal_keep_size`) a new snapshot is required | docs/full_profile.md |
+
+## Kafka -> Bronze -> Silver (Spark on Delta, full profile) — implemented, verified
+
+| Boundary | Guarantee | Evidence |
+|---|---|---|
+| Kafka -> Bronze | exactly once per Kafka offset (checkpointed source + idempotent Delta sink); immutable append | 6,772 Bronze rows = 6,772 distinct offsets = Kafka end offsets, **including after SIGKILL of the running job** |
+| Bronze -> Silver | effectively once: LSN-guarded MERGE (only strictly newer changes apply), idempotent quarantine/log appends (`txnAppId/txnVersion`) | Silver equals source column-by-column before and after the kill (6,013 rows) |
+| Validation | contract violations quarantined with reasons, never coerced | Spark tests: decimal amount, missing required, bad enum/min/timestamp/boolean |
+| Deletes | soft delete: `_is_deleted`, last known values kept; not published | probe customer present as deleted, absent from publication |
+| Replay | Silver is a deterministic function of Bronze | digest identical before/after `stream replay` |
+| Event time | hourly counts with watermark (default 6 h), business de-duplication within the watermark, RocksDB state bounded by the watermark | 10 rows dropped as late in incremental runs; correction path recomputes from Silver |
+| **Not guaranteed** | end-to-end exactly-once from the source; cross-table consistency of a publication while streaming runs (each table is one Delta version) | docs/adr/0004 |
+
+## Silver -> warehouse (`cdc_pub`) — implemented, verified
+
+All-or-nothing publication in one PostgreSQL transaction with a manifest (Silver Delta
+versions, row counts, checksum) under an advisory lock; dbt with `source_path=cdc` reads
+only the latest committed publication. Verified: 6,013 published rows = 6,013 live source
+rows; `mart_daily_revenue` built from the CDC path reconciles with the source (0 mismatches).
+
+## Orchestration (Airflow 3.3.2) — implemented, verified
+
+Bounded tasks only; `max_active_runs=1` and a one-slot `warehouse_writer` pool on every
+writing DAG. Verified under the real scheduler: publication -> (asset) dbt build -> (asset)
+reconciliation, all `success`; a manual publication run queued until the scheduled one
+finished; the backfill DAG ran explicit windows from its parameters.
