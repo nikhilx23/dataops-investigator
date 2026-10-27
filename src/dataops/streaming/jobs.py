@@ -312,7 +312,17 @@ def run(
     run_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Run the given jobs in one Spark application. available_now: process everything
-    present and stop; otherwise run continuously (for run_seconds, or until interrupted)."""
+    present and stop; otherwise run continuously (for run_seconds, or until interrupted).
+    Holds the lakehouse single-writer lock for the whole run."""
+    from dataops.streaming.lock import lakehouse_lock
+
+    with lakehouse_lock(f"stream run {'+'.join(jobs)}"):
+        return _run(jobs, available_now, processing_time, run_seconds)
+
+
+def _run(
+    jobs: list[str], available_now: bool, processing_time: str, run_seconds: float | None
+) -> dict[str, Any]:
     spark = S.get_spark("dataops-streaming")
     trigger: dict[str, Any] = (
         {"availableNow": True} if available_now else {"processingTime": processing_time}
@@ -336,7 +346,37 @@ def run(
             for q in queries:
                 report[q.name] = _summarize(q)
                 q.stop()
+    _write_metrics(spark, report)
     return report
+
+
+def _write_metrics(spark: Any, report: dict[str, Any]) -> None:
+    """Persist streaming progress for the reliability collectors (JSON lines, append-only).
+
+    One line per query progress event (keyed by query run id + batch id, so re-collection is
+    idempotent) and, for the Silver job, the quarantine and duplicate counts of the
+    micro-batches this run processed, read back from the Silver batch log.
+    """
+    from pyspark.sql import functions as F
+
+    out = S.lake_root() / "_metrics"
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / "progress.jsonl").open("a", encoding="utf-8") as fh:
+        for job, rep in report.items():
+            for prog in rep.pop("_progress", []):
+                fh.write(json.dumps({"job": job, **prog}, default=str) + "\n")
+    silver = report.get("silver")
+    if silver and silver.get("batch_ids"):
+        lo, hi = min(silver["batch_ids"]), max(silver["batch_ids"])
+        rows = (
+            spark.read.format("delta")
+            .load(S.path(*S.BATCH_LOG))
+            .where(F.col("silver_batch_id").between(lo, hi))
+            .collect()
+        )
+        with (out / "silver_batches.jsonl").open("a", encoding="utf-8") as fh:
+            for r in rows:
+                fh.write(json.dumps({**r.asDict(), "run_id": silver["run_id"]}, default=str) + "\n")
 
 
 def _summarize(q: Any) -> dict[str, Any]:
@@ -351,7 +391,29 @@ def _summarize(q: Any) -> dict[str, Any]:
     ]
     if q.exception():
         raise RuntimeError(f"{q.name} failed: {q.exception()}")
+    slim = [
+        {
+            "query_id": p.get("id"),
+            "run_id": p.get("runId"),
+            "batch_id": p.get("batchId"),
+            "timestamp": p.get("timestamp"),
+            "num_input_rows": p.get("numInputRows", 0),
+            "input_rows_per_second": p.get("inputRowsPerSecond"),
+            "processed_rows_per_second": p.get("processedRowsPerSecond"),
+            "duration_ms": p.get("durationMs", {}),
+            "watermark": (p.get("eventTime") or {}).get("watermark"),
+            "state_rows": [op.get("numRowsTotal", 0) for op in (p.get("stateOperators") or [])],
+            "rows_dropped_by_watermark": sum(
+                op.get("numRowsDroppedByWatermark", 0) for op in (p.get("stateOperators") or [])
+            ),
+            "source_end_offsets": [src.get("endOffset") for src in (p.get("sources") or [])],
+        }
+        for p in progs
+    ]
     return {
+        "_progress": slim,
+        "run_id": progs[-1].get("runId") if progs else None,
+        "batch_ids": [p.get("batchId") for p in progs if p.get("numInputRows", 0) > 0],
         "batches": len(progs),
         "input_rows": sum(p.get("numInputRows", 0) for p in progs),
         "rows_dropped_by_watermark": dropped,

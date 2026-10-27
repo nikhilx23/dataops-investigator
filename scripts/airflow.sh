@@ -31,6 +31,14 @@ export DATAOPS_PYTHON="$ROOT/.venv/bin/python"
 export DATAOPS_DBT="$ROOT/.venv/bin/dbt"
 export DATAOPS_PG_PORT="$PG_PORT"
 export DATAOPS_SOURCE_PATH="${DATAOPS_SOURCE_PATH:-cdc}"
+# The metadata collector reads Airflow's own REST API. In standalone mode Airflow generates
+# the admin password into AIRFLOW_HOME; it is read here at start, never printed or committed.
+PWFILE="$AIRFLOW_HOME/simple_auth_manager_passwords.json.generated"
+if [ -z "${DATAOPS_AIRFLOW_API_PASSWORD:-}" ] && [ -f "$PWFILE" ]; then
+  export DATAOPS_AIRFLOW_API_USER=admin
+  DATAOPS_AIRFLOW_API_PASSWORD="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["admin"])' "$PWFILE")"
+  export DATAOPS_AIRFLOW_API_PASSWORD
+fi
 # standalone spawns its components as `airflow ...`, so the venv must be on PATH.
 export PATH="$VENV/bin:$PATH"
 exec "$VENV/bin/airflow" "$@"

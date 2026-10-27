@@ -15,6 +15,8 @@ DAGs
   dataops_silver_publication every 30 min (full profile): Bronze/Silver/events -> publish
   dataops_dbt_build          triggered by the warehouse-input assets above
   dataops_reconciliation     triggered after a successful dbt build
+  dataops_metadata_collection every 15 min, all reliability collectors
+  dataops_incident_evaluation triggered after each metadata collection
 """
 
 from __future__ import annotations
@@ -163,3 +165,35 @@ with DAG(
             f"{CLI} reconcile --source-path {SOURCE_PATH} --correlation-id '{{{{ run_id }}}}'"
         ),
     )
+
+RELIABILITY_UPDATED = Asset("postgres://postgres:5432/reliability/reliability/pipeline_runs")
+
+with DAG(
+    dag_id="dataops_metadata_collection",
+    description="Collect run, quality, schema, freshness, lineage and streaming metadata.",
+    schedule=timedelta(minutes=15),
+    start_date=datetime(2026, 3, 2),
+    catchup=False,
+    max_active_runs=1,
+    default_args={**DEFAULTS, "execution_timeout": timedelta(minutes=10)},
+    tags=["dataops", "reliability"],
+) as metadata_collection:
+    # Collectors are isolated: an unreachable system is recorded as 'unavailable' and the
+    # others still run; the task fails only if a collector itself errors.
+    BashOperator(
+        task_id="collect_metadata",
+        bash_command=f"{CLI} collect",
+        outlets=[RELIABILITY_UPDATED],
+    )
+
+with DAG(
+    dag_id="dataops_incident_evaluation",
+    description="Evaluate deterministic incident rules on freshly collected metadata.",
+    schedule=[RELIABILITY_UPDATED],
+    start_date=datetime(2026, 3, 2),
+    catchup=False,
+    max_active_runs=1,
+    default_args={**DEFAULTS, "execution_timeout": timedelta(minutes=5)},
+    tags=["dataops", "reliability"],
+) as incident_evaluation:
+    BashOperator(task_id="evaluate_incidents", bash_command=f"{CLI} incidents evaluate")

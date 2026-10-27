@@ -162,12 +162,56 @@ Not verified here (blocked or deferred):
 - Grafana/Prometheus monitoring (planned with Milestone 3 observability).
 - Throughput/latency benchmarks (Milestone 6).
 
+## Milestone 3: reliability platform — **complete** (2026-10-27)
+
+Implemented: reliability migrations 0002 (metadata model) and 0003 (current-state views),
+collectors for dbt, ingestion/publication manifests, Airflow REST API v2, Spark progress,
+Kafka lag + Connect status, freshness and schema; versioned lineage with impact analysis;
+deterministic incident engine with correlation, deduplication, evidence and history;
+reversible failure scenario 1 (`dataops.scenarios.schema_change`); cross-process lakehouse
+lock; CLI `collect`, `lineage`, `incidents`; DAGs `dataops_metadata_collection` and
+`dataops_incident_evaluation`. Details: [reliability_platform.md](reliability_platform.md).
+
+| Command / check | Result |
+|---|---|
+| `python scripts/demo_m3.py` (lightweight DBs) | healthy: 0 events; after injection: dbt build exit 1, reconciliation fail (30 dates), 1 sev1 incident rooted at `shop.payments` with 3 dashboards; re-evaluation: 0 new events; revert ok |
+| Full profile `dataops collect` | 7/7 collectors success (dbt 492, ingestion 9, schema 11, freshness 24, Airflow 43, Spark 13, Kafka 12 records) |
+| Consumer-lag scenario (full profile) | 1 incident, 16 correlated signals; recovery clears all signals |
+| Airflow: metadata collection -> (asset) incident evaluation | 2 + 2 runs, all `success`; Airflow collector authenticated with the generated admin password |
+| `pytest -q` | 68 passed (40 unit, 22 integration, 6 Spark) |
+| ruff, mypy, shellcheck; DAG import check (7 DAGs) | clean |
+
+Bugs and design gaps found by verification and fixed:
+- Old failed/skipped dbt tasks kept firing after a later successful run -> signals are now
+  superseded by later success of the same task.
+- Freshness judged the inactive input path, and its stale readings stayed "latest" forever
+  -> only the active path (`DATAOPS_SOURCE_PATH`) is judged, and only observations repeated by
+  the latest collection count. Three false-positive incidents were closed with that reason.
+- One stalled input path opened 7 incidents (unrelated tables) -> signals now carry a group
+  (consumer, input path) used for correlation. The 7 were closed as superseded and
+  re-evaluated into one incident.
+- A CLI stream run and an Airflow stream task overlapped; Spark failed the second safely
+  (`CONCURRENT_STREAM_LOG_UPDATE`) -> added a cross-process lakehouse lock used by the
+  streaming runner and the publisher (which also makes publications a consistent cut).
+- An Airflow task's first attempt failed because the standalone API server was still
+  starting; the bounded retry recovered it (no code change).
+- dbt skips models downstream of a failed test, so no "failed task" appeared for stale marts
+  -> new signal `downstream_model_skipped`.
+
+Known limitations:
+- Root cause is inferred from lineage and signal order; it is never "confirmed" here.
+- Thresholds (lookback 24 h, correlation window 180 min, lag 15 min) are environment settings,
+  not learned.
+- Prometheus/Grafana are not set up; the views above are the metrics source for M5.
+- The Airflow collector needs API credentials; in standalone mode they come from the
+  generated password file at start-up.
+
 ## Blockers
 - Docker Hub anonymous pull rate limit (HTTP 429) from the build network blocks the app image
   build. Workarounds: retry later, authenticate `docker login` with a free Docker account, or
   rely on the CI build.
 
-## Next: Milestone 3 (reliability platform)
-Collectors for Airflow runs, dbt artifacts, Spark batch logs and Kafka lag; full reliability
-metadata model; contract and freshness checks; deterministic incident detection; lineage from
-the dbt manifest plus declared ingestion/publication/dashboard edges; impact analysis.
+## Next: Milestone 4 (AI investigator)
+Read-only, allowlisted tools over this metadata; runbooks indexed in pgvector; evidence-cited
+explanations; deterministic fixture mode for offline checks; real-model evaluation needs an
+LLM API key from the user.

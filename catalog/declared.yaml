@@ -1,0 +1,58 @@
+# Declared lineage: relationships that no tool can extract automatically.
+# Everything inside dbt (model -> model, source -> model, model -> dashboard exposure) is
+# extracted from dbt's manifest.json instead and marked extraction='dbt_manifest'.
+#
+# Why the per-table logical datasets below: raw.source_records, bronze.cdc_events and
+# cdc_pub.records each hold every source table, and dbt staging models select one table
+# from them through a macro filter (source_table = '<t>'). The manifest therefore links
+# every staging model to the whole shared table, which would make any source problem look
+# like it affects everything. The declared per-table datasets replace those coarse edges.
+version: 1
+
+# staging model -> source table it reads (the macro filter value)
+staging_inputs:
+  stg_warehouses: warehouses
+  stg_customers: customers
+  stg_products: products
+  stg_product_versions: product_versions
+  stg_orders: orders
+  stg_order_items: order_items
+  stg_payments: payments
+  stg_refunds: refunds
+  stg_inventory_movements: inventory_movements
+  stg_shipments: shipments
+  stg_shipment_events: shipment_events
+
+# dbt sources whose manifest edges are replaced by the per-table logical datasets
+coarse_sources:
+  - source.dataops.raw.source_records
+  - source.dataops.raw.ingestion_batches
+  - source.dataops.cdc_pub.records
+  - source.dataops.cdc_pub.publications
+
+# Per source table, both ingestion paths (templated with {t}):
+paths:
+  batch:
+    - ["commerce_source.shop.{t}", "warehouse.raw.{t}", "ingests"]
+    - ["warehouse.raw.{t}", "staging:{t}", "depends_on"]
+  cdc:
+    - ["commerce_source.shop.{t}", "kafka.cdc.shop.{t}", "captures"]
+    - ["kafka.cdc.shop.{t}", "lakehouse.bronze.{t}", "ingests"]
+    - ["lakehouse.bronze.{t}", "lakehouse.silver.{t}", "depends_on"]
+    - ["lakehouse.silver.{t}", "warehouse.cdc_pub.{t}", "publishes"]
+    - ["warehouse.cdc_pub.{t}", "staging:{t}", "depends_on"]
+  # event-time aggregate fed by shipment events only
+  extra:
+    - [lakehouse.bronze.shipment_events, lakehouse.silver.shipment_events_hourly, depends_on]
+
+datasets:
+  raw:        {system: warehouse, kind: raw_table,   owner: data-platform,
+               description: "Committed batch-ingested versions of source table {t} (logical slice of raw.source_records)"}
+  topic:      {system: kafka,     kind: topic,       owner: data-platform,
+               description: "Debezium change events for shop.{t}"}
+  bronze:     {system: lakehouse, kind: delta_table, owner: data-platform,
+               description: "Raw CDC envelopes of {t} (logical slice of bronze/cdc_events)"}
+  silver:     {system: lakehouse, kind: delta_table, owner: data-platform,
+               description: "Validated current state of {t} (Silver Delta table)"}
+  cdc_pub:    {system: warehouse, kind: raw_table,   owner: data-platform,
+               description: "Published Silver snapshot of {t} (logical slice of cdc_pub.records)"}

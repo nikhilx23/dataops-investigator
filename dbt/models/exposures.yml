@@ -1,0 +1,36 @@
+version: 2
+
+# Declared dashboard dependencies. dbt records them in manifest.json, so the lineage
+# collector extracts them like any other dbt edge.
+exposures:
+  - name: revenue_overview
+    label: Revenue overview
+    type: dashboard
+    maturity: high
+    description: Daily booked and collected revenue for finance leadership (synthetic company).
+    owner: {name: Finance Analytics, email: finance-analytics@example.test}
+    depends_on: [ref('mart_daily_revenue')]
+
+  - name: finance_reconciliation
+    label: Payment reconciliation
+    type: dashboard
+    maturity: high
+    description: Orders whose captures or refunds disagree with the order total.
+    owner: {name: Finance Analytics, email: finance-analytics@example.test}
+    depends_on: [ref('mart_payment_reconciliation')]
+
+  - name: fulfillment_overview
+    label: Fulfillment overview
+    type: dashboard
+    maturity: medium
+    description: Order-to-delivery timings and late shipment events.
+    owner: {name: Operations Analytics, email: ops-analytics@example.test}
+    depends_on: [ref('mart_order_fulfillment')]
+
+  - name: inventory_overview
+    label: Inventory overview
+    type: dashboard
+    maturity: medium
+    description: On-hand, allocated and available stock per product and warehouse.
+    owner: {name: Supply Chain Analytics, email: supply-chain@example.test}
+    depends_on: [ref('mart_inventory_position')]

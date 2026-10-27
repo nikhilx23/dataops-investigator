@@ -214,6 +214,7 @@ def cmd_stream(args: argparse.Namespace) -> int:
     )
     for v in report.values():
         v.pop("last_progress", None)
+        v.pop("batch_ids", None)
     _emit(report)
     return 0
 
@@ -240,6 +241,67 @@ def cmd_cdc(args: argparse.Namespace) -> int:
         r = reconcile.reconcile(args.correlation_id or str(uuid.uuid4()))
         _emit(r.as_dict())
         return 0 if r.status == "pass" else 1
+    return 0
+
+
+def cmd_collect(args: argparse.Namespace) -> int:
+    from dataops.reliability.collectors import collect
+
+    out = collect(args.collectors or None)
+    _emit(out)
+    return 0 if all(v["status"] != "failed" for v in out.values()) else 1
+
+
+def cmd_lineage(args: argparse.Namespace) -> int:
+    from dataops.reliability import lineage
+
+    g, version = lineage.load_latest()
+    if version is None:
+        raise SystemExit("no lineage collected yet: run `dataops collect --collectors dbt`")
+    if args.lineage_cmd == "impact":
+        _emit({"lineage_version": version, **lineage.impact(g, args.dataset)})
+    elif args.lineage_cmd == "upstream":
+        _emit(
+            {
+                "lineage_version": version,
+                "dataset_id": args.dataset,
+                "upstream": g.upstream(args.dataset),
+            }
+        )
+    elif args.lineage_cmd == "path":
+        p = g.path(args.dataset, args.to)
+        _emit({"lineage_version": version, "path": p, "hops": g.explain(p) if p else None})
+    else:
+        _emit(
+            {
+                "lineage_version": version,
+                "datasets": len(g.nodes),
+                "edges": len(g.edges),
+                "cycles": g.find_cycles(),
+            }
+        )
+    return 0
+
+
+def cmd_incidents(args: argparse.Namespace) -> int:
+    from dataops.reliability import incidents
+
+    if args.incident_cmd == "evaluate":
+        _emit(incidents.evaluate())
+    elif args.incident_cmd == "list":
+        _emit(incidents.list_incidents(active_only=not args.all))
+    elif args.incident_cmd == "close":
+        if not (args.incident_id and args.reason):
+            raise SystemExit("close needs an incident id and --reason")
+        _emit(
+            incidents.close(
+                args.incident_id, args.reason, args.actor or os.environ.get("USER", "cli")
+            )
+        )
+    else:
+        if not args.incident_id:
+            raise SystemExit("show needs an incident id")
+        _emit(incidents.show(args.incident_id))
     return 0
 
 
@@ -371,6 +433,28 @@ def build_parser() -> argparse.ArgumentParser:
     pub = sub.add_parser("publish", help="publish curated Silver into the warehouse (cdc_pub)")
     pub.add_argument("--correlation-id")
     pub.set_defaults(func=cmd_publish)
+
+    col = sub.add_parser("collect", help="collect reliability metadata")
+    col.add_argument(
+        "--collectors",
+        nargs="*",
+        choices=["dbt", "ingestion", "schema", "freshness", "airflow", "spark", "kafka"],
+    )
+    col.set_defaults(func=cmd_collect)
+
+    lin = sub.add_parser("lineage", help="lineage graph and impact analysis")
+    lin.add_argument("lineage_cmd", choices=["impact", "upstream", "path", "summary"])
+    lin.add_argument("dataset", nargs="?", default="")
+    lin.add_argument("--to", help="target dataset for `path`")
+    lin.set_defaults(func=cmd_lineage)
+
+    inc = sub.add_parser("incidents", help="deterministic incident detection")
+    inc.add_argument("incident_cmd", choices=["evaluate", "list", "show", "close"])
+    inc.add_argument("incident_id", nargs="?")
+    inc.add_argument("--all", action="store_true", help="include resolved/closed incidents")
+    inc.add_argument("--reason", help="why the incident is closed (required for close)")
+    inc.add_argument("--actor", help="who closes it (default: $USER)")
+    inc.set_defaults(func=cmd_incidents)
 
     rst = sub.add_parser("reset", help="DESTRUCTIVE: empty the synthetic demo environment")
     rst.add_argument("--confirm-synthetic-reset", action="store_true")

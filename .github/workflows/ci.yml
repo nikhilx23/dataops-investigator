@@ -97,7 +97,7 @@ jobs:
             -c orchestration/constraints-airflow-3.3.2-py3.13.txt
           /tmp/af/bin/airflow db migrate
           /tmp/af/bin/airflow dags reserialize
-          test "$(/tmp/af/bin/airflow dags list -o plain | grep -c '^dataops_')" -eq 5
+          test "$(/tmp/af/bin/airflow dags list -o plain | grep -c '^dataops_')" -eq 7
           /tmp/af/bin/airflow dags list-import-errors | tee /tmp/import-errors.txt
           grep -q "No data found" /tmp/import-errors.txt
 

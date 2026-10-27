@@ -1,11 +1,9 @@
 """Controlled publication of curated Silver data into the warehouse (cdc_pub schema).
 
 Boundary guarantees:
-- Each Silver table is read at one Delta version (a consistent snapshot of that table); the
-  versions are recorded in the manifest. Tables are read one after another, so when the
-  streaming jobs are running, two tables can be at slightly different points in time:
-  publish after a processing cycle (as the orchestrated pipeline does) for a cross-table
-  consistent cut.
+- Each Silver table is read at one Delta version, recorded in the manifest. Publication
+  holds the lakehouse single-writer lock (streaming.lock), so no stream run writes Silver
+  while the tables are read: the publication is a consistent cut across tables.
 - The warehouse side is atomic: manifest insert, removal of the previous records and the
   COPY of the new ones happen in one PostgreSQL transaction, under an advisory lock that
   rejects a concurrent publisher. dbt (source_path=cdc) reads only the latest committed
@@ -82,6 +80,15 @@ def _collect(spark: Any) -> tuple[list[tuple[Any, ...]], dict[str, int], dict[st
 
 
 def publish(spark: Any, correlation_id: str) -> dict[str, Any]:
+    """Publish under the lakehouse lock: no stream run writes Silver meanwhile, so all tables
+    are read at one consistent cut."""
+    from dataops.streaming.lock import lakehouse_lock
+
+    with lakehouse_lock("silver publication"):
+        return _publish(spark, correlation_id)
+
+
+def _publish(spark: Any, correlation_id: str) -> dict[str, Any]:
     started = datetime.now(UTC)
     rows, versions, counts = _collect(spark)
     checksum = hashlib.sha256("\n".join(sorted(r[4] for r in rows)).encode()).hexdigest()

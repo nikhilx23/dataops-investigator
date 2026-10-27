@@ -6,9 +6,9 @@ A portfolio project that builds an operational data platform for a *fictional* c
 company, then a reliability and AI investigation layer around it. **All data is synthetic**;
 this is a simulated environment, not a real company's production platform.
 
-> **Status: Milestones 1 and 2 complete (batch path, warehouse models, CDC, Spark + Delta
-> lakehouse, Airflow), all verified; reliability platform, AI investigator, recovery and
-> dashboard are not built yet.** See [docs/PROGRESS.md](docs/PROGRESS.md)
+> **Status: Milestones 1–3 complete and verified (data platform, CDC + lakehouse, Airflow,
+> reliability platform with incident detection and impact analysis). The AI investigator,
+> recovery and dashboard are not built yet.** See [docs/PROGRESS.md](docs/PROGRESS.md)
 > for exactly what is implemented, verified, planned, and blocked. Nothing below claims more.
 
 ## The problem
@@ -96,6 +96,20 @@ bash scripts/demo_full.sh      # PowerShell: scripts/demo_full.ps1
 bash scripts/airflow.sh standalone
 ```
 
+## Reliability platform
+
+Collectors turn dbt artifacts, loader manifests, Airflow, Spark and Kafka metrics, freshness
+and schema observations into one metadata model; a versioned lineage graph answers "what is
+affected"; a deterministic engine groups correlated signals into one incident with an
+inferred root and citable evidence. Details: [docs/reliability_platform.md](docs/reliability_platform.md).
+
+```bash
+python -m dataops collect
+python -m dataops lineage impact commerce_source.shop.payments
+python -m dataops incidents evaluate && python -m dataops incidents list
+python scripts/demo_m3.py      # breaking schema change -> one incident with impact (reversible)
+```
+
 ## Tests
 
 ```bash
@@ -112,4 +126,4 @@ ruff check . && ruff format --check . && mypy
   services ran in Compose and the CLI ran from the host virtualenv. The CI workflow has not
   run yet (nothing has been pushed).
 - Reloading the source with a *different* seed requires resetting the warehouse raw zone.
-- Not built yet: the reliability platform, the AI investigator, recovery and the dashboard.
+- Not built yet: the AI investigator, recovery actions and the dashboard.
