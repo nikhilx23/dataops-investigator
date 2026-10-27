@@ -52,7 +52,7 @@ repeated by the latest freshness collection, do not fire.
 
 Correlation: signals within the window are clustered when their datasets are connected in
 lineage, or when they share a group (one lagging consumer; one stalled warehouse input
-path). The incident's root is the most upstream affected dataset and is always marked
+path; a failed Debezium connector belongs to the CDC input path). The incident's root is the most upstream affected dataset and is always marked
 **inferred**; with several unrelated roots joined only by a group, the incident is keyed by
 the group and names no single root. One active incident per fingerprint; a later, more
 upstream signal re-roots the incident and the change is recorded in its history.

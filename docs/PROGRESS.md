@@ -211,7 +211,44 @@ Known limitations:
   build. Workarounds: retry later, authenticate `docker login` with a free Docker account, or
   rely on the CI build.
 
-## Next: Milestone 4 (AI investigator)
-Read-only, allowlisted tools over this metadata; runbooks indexed in pgvector; evidence-cited
-explanations; deterministic fixture mode for offline checks; real-model evaluation needs an
-LLM API key from the user.
+## Milestone 4: AI investigator — **implemented; verified in fixture mode; real-model evaluation blocked** (2026-10-27)
+
+Implemented: migration `reliability/0004` (runbook documents/chunks with pgvector HNSW and
+tsvector indexes; investigation audit fields); seven original runbooks; incremental,
+fingerprinted, section-aware indexing with update/delete propagation; hybrid retrieval;
+11 allowlisted read-only tools; evidence resolver; structured output schema; validator
+(citations, numeric grounding, forbidden operations, numeric confidence, forced abstention);
+bounded loop with audit record; Anthropic provider; labelled fixture provider; 35-case
+evaluation suite with harness and report; CLI `runbooks`, `investigate`, `eval`.
+Details: [investigator.md](investigator.md), [../evaluations/README.md](../evaluations/README.md).
+
+| Command / check | Result |
+|---|---|
+| `dataops db migrate` | `reliability/0004_investigator.sql` applied |
+| `dataops runbooks index` (twice) | 7 documents, 28 chunks; second run: 7 unchanged |
+| `dataops investigate <M3 schema incident> --mode fixture` | completed; 7 tool calls; 26/26 citations valid; cause `schema_change` at `shop.payments`; backfill/rebuild preconditions marked **unmet** (schema still breaking) |
+| `dataops eval --mode fixture` (35 cases, `*_eval` databases) | every case opened exactly one incident; see `evaluations/results/fixture/` — **fixture harness, not AI; not a model-quality metric** |
+| Retrieval benchmark (hashing, k=4) | hit@4 35/35, MRR@4 0.91 (queries written by the runbook author: optimistic) |
+| `pytest tests/unit` / investigator integration tests | 62 passed / 4 passed; full non-Spark suite 88 passed earlier in the milestone |
+| ruff, ruff format, mypy | clean |
+
+Not done / blocked:
+- **Real-model evaluation: blocked** until `ANTHROPIC_API_KEY` is in the local `.env`
+  (api.anthropic.com is reachable: 401 without a key). The Anthropic code path is
+  implemented but has not made a single real call yet.
+- **Neural embeddings: blocked** (Hugging Face unreachable from this network); the default
+  `hashing-v1-384` embedder is lexical, labelled as such in every chunk and result.
+- No human-rubric scoring yet (needs real-model outputs).
+
+Found by verification and fixed:
+- `get_incident` results exceeded the context budget and the trimming dropped the decisive
+  schema signal -> signals are ordered root-first/upstream-first and a per-rule count is
+  always included; budget raised to 12k characters.
+- A failed Debezium connector opened a separate incident from the stale published tables it
+  caused -> connector signals now share the CDC input-path group.
+- Two seeds listed models as skipped that are not downstream in lineage, so the engine
+  (correctly) split them into two incidents -> seeds checked against the lineage graph.
+
+## Next: Milestone 5 (recovery and demonstration)
+Recovery service with approvals and audit, failure scenarios 2-8, FastAPI, Streamlit,
+Prometheus/Grafana; real-model evaluation as soon as the key is provided.

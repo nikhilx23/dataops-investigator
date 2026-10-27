@@ -68,6 +68,8 @@ jobs:
         run: pytest tests/integration -q
       - name: Milestone 1 demo
         run: bash scripts/demo_m1.sh
+      - name: Investigator evaluation, fixture mode (labelled harness, not AI)
+        run: python -m dataops eval --mode fixture
 
   spark-and-dags:
     # Contract validation on local Spark (jars from Maven Central) and Airflow DAG parsing.

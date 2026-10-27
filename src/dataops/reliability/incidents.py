@@ -307,6 +307,9 @@ def _rules(conn: Any, since: datetime) -> list[Event]:
                     "stream_observations",
                     oid,
                     at,
+                    # A failed connector stops the whole CDC input path: correlate it with the
+                    # staleness of the published tables it feeds.
+                    group="input_path:warehouse.cdc_pub",
                 )
             )
     return ev

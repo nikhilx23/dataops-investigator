@@ -305,6 +305,66 @@ def cmd_incidents(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_runbooks(args: argparse.Namespace) -> int:
+    from dataops.investigator import runbooks
+
+    if args.runbook_cmd == "index":
+        _emit(runbooks.index())
+    else:
+        if not args.query:
+            raise SystemExit("search needs a query")
+        hits = runbooks.search(" ".join(args.query), args.k, args.incident_type)
+        _emit([{k: v for k, v in h.items() if k != "content"} for h in hits])
+    return 0
+
+
+def cmd_investigate(args: argparse.Namespace) -> int:
+    from dataops.investigator import engine
+
+    if args.show:
+        _emit(engine.show(args.target))
+        return 0
+    result = engine.investigate(args.target, mode=args.mode, question=args.question)
+    if result["mode"] == "fixture":
+        print(
+            "NOTE: fixture mode is a deterministic test harness, not AI inference.", file=sys.stderr
+        )
+    _emit(
+        result
+        if args.verbose
+        else {
+            k: result[k]
+            for k in (
+                "investigation_id",
+                "mode",
+                "model",
+                "status",
+                "output",
+                "error",
+                "input_tokens",
+                "output_tokens",
+                "latency_ms",
+            )
+        }
+        | {
+            "tool_calls": len(result["tool_calls"]),
+            "invalid_citations": result["validation"].get("invalid_citations"),
+        }
+    )
+    return 0 if result["status"] != "failed" else 1
+
+
+def cmd_eval(args: argparse.Namespace) -> int:
+    from dataops.evaluation import harness
+
+    report = harness.run(args.mode, args.case or None, rebuild=args.rebuild)
+    _emit(
+        {k: report[k] for k in ("mode", "label", "model", "metrics", "files")}
+        | {"retrieval": {k: v for k, v in report["retrieval"].items() if k != "rows"}}
+    )
+    return 0
+
+
 def cmd_reset(args: argparse.Namespace) -> int:
     if not args.confirm_synthetic_reset:
         raise SystemExit(
@@ -455,6 +515,31 @@ def build_parser() -> argparse.ArgumentParser:
     inc.add_argument("--reason", help="why the incident is closed (required for close)")
     inc.add_argument("--actor", help="who closes it (default: $USER)")
     inc.set_defaults(func=cmd_incidents)
+
+    rbk = sub.add_parser("runbooks", help="runbook retrieval index")
+    rbk.add_argument("runbook_cmd", choices=["index", "search"])
+    rbk.add_argument("query", nargs="*")
+    rbk.add_argument("--k", type=int, default=4)
+    rbk.add_argument("--incident-type")
+    rbk.set_defaults(func=cmd_runbooks)
+
+    inv = sub.add_parser("investigate", help="read-only AI investigation of an incident")
+    inv.add_argument("target", help="incident id (or investigation id with --show)")
+    inv.add_argument(
+        "--mode",
+        choices=["model", "fixture"],
+        help="model = real LLM (default); fixture = labelled deterministic test harness",
+    )
+    inv.add_argument("--question")
+    inv.add_argument("--show", action="store_true", help="show a recorded investigation")
+    inv.add_argument("--verbose", action="store_true")
+    inv.set_defaults(func=cmd_investigate)
+
+    evl = sub.add_parser("eval", help="run the investigator evaluation suite on *_eval databases")
+    evl.add_argument("--mode", choices=["model", "fixture"], required=True)
+    evl.add_argument("--case", action="append", help="run only these case ids")
+    evl.add_argument("--rebuild", action="store_true", help="recreate the *_eval databases")
+    evl.set_defaults(func=cmd_eval)
 
     rst = sub.add_parser("reset", help="DESTRUCTIVE: empty the synthetic demo environment")
     rst.add_argument("--confirm-synthetic-reset", action="store_true")

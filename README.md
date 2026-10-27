@@ -7,8 +7,9 @@ company, then a reliability and AI investigation layer around it. **All data is 
 this is a simulated environment, not a real company's production platform.
 
 > **Status: Milestones 1–3 complete and verified (data platform, CDC + lakehouse, Airflow,
-> reliability platform with incident detection and impact analysis). The AI investigator,
-> recovery and dashboard are not built yet.** See [docs/PROGRESS.md](docs/PROGRESS.md)
+> reliability platform with incident detection and impact analysis). Milestone 4 (AI
+> investigator) is implemented and verified in its labelled offline fixture mode; the
+> real-model evaluation has not run yet (no API key). Recovery and dashboard are not built.** See [docs/PROGRESS.md](docs/PROGRESS.md)
 > for exactly what is implemented, verified, planned, and blocked. Nothing below claims more.
 
 ## The problem
@@ -110,6 +111,20 @@ python -m dataops incidents evaluate && python -m dataops incidents list
 python scripts/demo_m3.py      # breaking schema change -> one incident with impact (reversible)
 ```
 
+## AI investigator
+
+A read-only investigator calls 11 allowlisted tools over the reliability metadata and an
+indexed runbook corpus, then submits a structured explanation whose every citation, number
+and recovery option is validated against stored evidence. Details:
+[docs/investigator.md](docs/investigator.md); evaluation: [evaluations/](evaluations/README.md).
+
+```bash
+python -m dataops runbooks index
+python -m dataops investigate <incident-id> --mode fixture   # labelled test harness, not AI
+python -m dataops investigate <incident-id>                   # real model; needs ANTHROPIC_API_KEY in .env
+python -m dataops eval --mode fixture                         # 35-case suite on isolated *_eval databases
+```
+
 ## Tests
 
 ```bash
@@ -126,4 +141,5 @@ ruff check . && ruff format --check . && mypy
   services ran in Compose and the CLI ran from the host virtualenv. The CI workflow has not
   run yet (nothing has been pushed).
 - Reloading the source with a *different* seed requires resetting the warehouse raw zone.
-- Not built yet: the AI investigator, recovery actions and the dashboard.
+- Not built yet: recovery actions and the dashboard. The investigator has not been evaluated
+  with a real model yet, and retrieval uses a lexical (non-neural) embedding by default.
