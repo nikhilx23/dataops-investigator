@@ -1,0 +1,16 @@
+# Default gitleaks rules plus an allowlist for deliberately fake credentials used in tests and
+# CI (they exist to prove redaction and auth checks work). Real secrets live only in the
+# git-ignored .env file.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "fake test/CI credentials"
+regexes = [
+  '''sk-abcdefghijklmnop''',
+  '''hunter2xyz''',
+  '''s3cretpw''',
+  '''s3cret-token''',
+  '''ci-admin-password''',
+  '''parse-only-not-a-secret''',
+]

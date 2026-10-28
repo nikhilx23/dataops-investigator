@@ -13,7 +13,7 @@ import contextlib
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 
 @dataclass
@@ -76,8 +76,8 @@ class AnthropicProvider:
             model=self.model,
             max_tokens=self._max_tokens,
             system=system,
-            messages=messages,  # type: ignore[arg-type]
-            tools=tools,  # type: ignore[arg-type]
+            messages=cast(Any, messages),  # SDK TypedDicts; plain dicts are accepted
+            tools=cast(Any, tools),
             **kwargs,
         )
         blocks: list[dict[str, Any]] = []
