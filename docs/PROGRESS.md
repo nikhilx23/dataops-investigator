@@ -293,12 +293,18 @@ Not done / limits:
 - Freshness `data_lag` can be negative after scenario cleanups (warehouse holds a version the
   source no longer has); shown as observed, not clamped.
 
+## GitHub and CI — **verified** (2026-10-28)
+Pushed to https://github.com/nikhilx23/dataops-investigator. First CI run: integration,
+spark-and-dags and compose-and-scripts passed; lint-and-unit failed (mypy: type-ignore comments
+unused when the optional Anthropic SDK is absent) and secret-scan failed (deliberately fake test
+credentials). Fixed (cast instead of ignores; `.gitleaks.toml` allowlisting those exact fake
+values). Second run (40621685613): **all 5 jobs passed**.
+
 ## Next: Milestone 6 (benchmarks and portfolio)
-CI run on GitHub (needs the repository), benchmarks, remaining docs (architecture diagram,
+Benchmarks, remaining docs (architecture diagram,
 data dictionary, security, cost, demo script, troubleshooting, interview guide, resume
 bullets from verified results), optional Terraform; real-model evaluation when the key arrives.
 
 ## Blockers
 - Real-model evaluation needs `ANTHROPIC_API_KEY` in the local `.env`.
-- Pushing needs an existing GitHub repository (this session cannot create one).
 - deb.debian.org and huggingface.co are not reachable from the build network.

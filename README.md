@@ -160,7 +160,6 @@ ruff check . && ruff format --check . && mypy
 
 - Batch extraction cannot see hard deletes or intermediate versions between runs; the full
   profile's CDC path does.
-- The CI workflow has not run yet (nothing has been pushed).
 - Reloading the source with a *different* seed requires resetting the warehouse raw zone.
 - The investigator has not been evaluated with a real model yet, and retrieval uses a lexical
   (non-neural) embedding by default.
