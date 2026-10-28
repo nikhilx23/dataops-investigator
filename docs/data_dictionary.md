@@ -6,7 +6,7 @@ modeling decisions: [data_model.md](data_model.md). All data is synthetic.
 
 ## `intermediate.int_order_totals`
 
-Layer: intermediate · materialized: view
+Layer: intermediate · materialized: table
 
 Grain: one row per order. Key: order_id. Order total = sum of its line amounts.
 
@@ -20,7 +20,7 @@ Grain: one row per order. Key: order_id. Order total = sum of its line amounts.
 
 ## `intermediate.int_payment_refunds`
 
-Layer: intermediate · materialized: view
+Layer: intermediate · materialized: table
 
 Grain: one row per refunded payment. Key: payment_id.
 
@@ -255,7 +255,7 @@ Grain: one row per shipment event. Key: shipment_event_id. Dated by event time. 
 
 ## `staging.stg_customers`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per customer (current version). Key: customer_id.
 
@@ -270,7 +270,7 @@ Grain: one row per customer (current version). Key: customer_id.
 
 ## `staging.stg_inventory_movements`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per inventory movement. Key: movement_id.
 
@@ -288,7 +288,7 @@ Grain: one row per inventory movement. Key: movement_id.
 
 ## `staging.stg_order_items`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per order line (current version). Key: order_item_id.
 
@@ -308,7 +308,7 @@ Grain: one row per order line (current version). Key: order_item_id.
 
 ## `staging.stg_orders`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per order (current version). Key: order_id.
 
@@ -326,7 +326,7 @@ Grain: one row per order (current version). Key: order_id.
 
 ## `staging.stg_payments`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per payment attempt (current version). Key: payment_id.
 
@@ -346,7 +346,7 @@ Grain: one row per payment attempt (current version). Key: payment_id.
 
 ## `staging.stg_product_versions`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per product version from the ordered source change log. Key: product_version_id.
 
@@ -366,7 +366,7 @@ Grain: one row per product version from the ordered source change log. Key: prod
 
 ## `staging.stg_products`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per product (current version). Key: product_id.
 
@@ -383,7 +383,7 @@ Grain: one row per product (current version). Key: product_id.
 
 ## `staging.stg_refunds`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per refund (current version). Key: refund_id.
 
@@ -399,7 +399,7 @@ Grain: one row per refund (current version). Key: refund_id.
 
 ## `staging.stg_shipment_events`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per shipment event. Key: shipment_event_id. event_at = when it happened; received_at = when the source learned of it.
 
@@ -414,7 +414,7 @@ Grain: one row per shipment event. Key: shipment_event_id. event_at = when it ha
 
 ## `staging.stg_shipments`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per shipment (current version). Key: shipment_id.
 
@@ -430,7 +430,7 @@ Grain: one row per shipment (current version). Key: shipment_id.
 
 ## `staging.stg_warehouses`
 
-Layer: staging · materialized: view
+Layer: staging · materialized: table
 
 Grain: one row per warehouse (current version). Key: warehouse_id.
 

@@ -1,7 +1,7 @@
 {
-  "profile": "small",
+  "profile": "medium",
   "seed": 42,
-  "started_at": "2026-10-28T02:42:13+00:00",
+  "started_at": "2026-10-28T03:05:27+00:00",
   "machine": {
     "python": "3.13.17",
     "cpus": 2,
@@ -10,89 +10,89 @@
   },
   "note": "single run per step unless n is given; numbers are from this machine only",
   "generate_and_load": {
-    "rows": 25283,
-    "generate_s": 0.059,
-    "load_s": 0.316
+    "rows": 505260,
+    "generate_s": 1.481,
+    "load_s": 6.089
   },
   "batch_extraction_full": {
     "tables": 11,
-    "inserted_rows": 25283,
-    "seconds": 1.346,
-    "rows_per_s": 18784,
+    "inserted_rows": 505260,
+    "seconds": 36.502,
+    "rows_per_s": 13842,
     "failed": 0
   },
   "batch_extraction_rerun_idempotent": {
     "inserted_rows": 0,
-    "duplicate_rows": 25283,
-    "seconds": 1.133
+    "duplicate_rows": 505260,
+    "seconds": 27.565
   },
   "dbt_build_full": {
     "exit": 0,
-    "seconds": 35.418
+    "seconds": 9.547
   },
   "incremental_after_1pct_change": {
-    "orders_touched": 18,
-    "extract_s": 0.032,
-    "inserted_rows": 18,
+    "orders_touched": 372,
+    "extract_s": 0.051,
+    "inserted_rows": 372,
     "dbt_build_exit": 0,
-    "dbt_build_s": 7.936
+    "dbt_build_s": 7.763
   },
   "reconciliation": {
     "row_counts": [
       "pass",
-      0.067
+      1.045
     ],
     "source_vs_mart": [
       "pass",
-      0.032
+      0.639
     ],
     "ledger_vs_mart": [
       "pass",
-      0.019
+      0.02
     ]
   },
   "reliability": {
-    "lineage_persist_s": 0.026,
-    "collect_s": 0.24,
+    "lineage_persist_s": 0.025,
+    "collect_s": 0.629,
     "collectors": {
       "dbt": "success",
       "ingestion": "success",
       "schema": "success",
       "freshness": "success"
     },
-    "incident_evaluation_s": 0.031,
+    "incident_evaluation_s": 0.028,
     "new_events_on_healthy_data": 0
   },
   "runbook_search": {
     "n": 60,
-    "p50_ms": 13.82,
-    "p95_ms": 16.47
+    "p50_ms": 13.86,
+    "p95_ms": 18.81
   },
   "api_latency": {
     "/health": {
       "n": 200,
-      "p50_ms": 9.39,
-      "p95_ms": 11.91,
-      "max_ms": 14.29
+      "p50_ms": 10.26,
+      "p95_ms": 13.53,
+      "max_ms": 15.05
     },
     "/overview": {
       "n": 200,
-      "p50_ms": 59.85,
-      "p95_ms": 81.96,
-      "max_ms": 95.92
+      "p50_ms": 58.2,
+      "p95_ms": 73.58,
+      "max_ms": 83.5
     },
     "/incidents?all=true": {
       "n": 200,
-      "p50_ms": 12.92,
-      "p95_ms": 16.23,
-      "max_ms": 36.31
+      "p50_ms": 11.14,
+      "p95_ms": 13.75,
+      "max_ms": 15.7
     },
     "/metrics": {
       "n": 200,
-      "p50_ms": 19.04,
-      "p95_ms": 22.31,
-      "max_ms": 26.1
+      "p50_ms": 15.43,
+      "p95_ms": 20.77,
+      "max_ms": 25.12
     }
   },
-  "finished_at": "2026-10-28T02:43:23+00:00"
+  "finished_at": "2026-10-28T03:07:24+00:00"
 }

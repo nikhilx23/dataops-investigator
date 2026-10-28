@@ -6,12 +6,27 @@ A portfolio project that builds an operational data platform for a *fictional* c
 company, then a reliability and AI investigation layer around it. **All data is synthetic**;
 this is a simulated environment, not a real company's production platform.
 
-> **Status: Milestones 1–5 implemented and verified (data platform, CDC + lakehouse, Airflow,
-> reliability platform, AI investigator, controlled recovery, failure scenarios, API,
-> dashboard, Prometheus/Grafana). The AI investigator is verified only in its labelled
-> offline fixture mode: the real-model evaluation has not run yet (no API key).
-> Milestone 6 (benchmarks, final docs) is next.** See [docs/PROGRESS.md](docs/PROGRESS.md)
+> **Status: Milestones 1–6 implemented (data platform, CDC + lakehouse, Airflow, reliability
+> platform, AI investigator, controlled recovery, failure scenarios, API, dashboard,
+> Prometheus/Grafana, benchmarks, docs, CI green). The AI investigator is verified only in
+> its labelled offline fixture mode: the real-model evaluation has not run yet (no API key).
+> Verified results, resume bullets and unfinished work: [docs/portfolio.md](docs/portfolio.md).** See [docs/PROGRESS.md](docs/PROGRESS.md)
 > for exactly what is implemented, verified, planned, and blocked. Nothing below claims more.
+
+![Architecture](docs/architecture/overview.png)
+
+## Documentation
+
+| Topic | Document |
+|---|---|
+| Architecture (Mermaid) and access boundaries | [docs/architecture/overview.md](docs/architecture/overview.md), [guarantees](docs/architecture/guarantees.md), [ADRs](docs/adr/) |
+| Data dictionary, business metrics, data model | [data_dictionary.md](docs/data_dictionary.md), [business_rules.md](docs/business_rules.md), [data_model.md](docs/data_model.md) |
+| Reliability platform, AI investigator, AI evaluation | [reliability_platform.md](docs/reliability_platform.md), [investigator.md](docs/investigator.md), [evaluations/](evaluations/README.md) |
+| Failure scenarios, recovery guide | [failure_scenarios.md](docs/failure_scenarios.md), [recovery.md](docs/recovery.md) |
+| Benchmarks | [benchmarks.md](docs/benchmarks.md) |
+| Security, cost | [security.md](docs/security.md), [cost.md](docs/cost.md) |
+| Demo script, troubleshooting, interview guide | [demo_script.md](docs/demo_script.md), [troubleshooting.md](docs/troubleshooting.md), [interview_guide.md](docs/interview_guide.md) |
+| Progress log (implemented / verified / blocked) | [PROGRESS.md](docs/PROGRESS.md) |
 
 ## The problem
 
@@ -20,7 +35,7 @@ actually failed, what is affected downstream, and is it fixed?* This project bui
 evidence trail (run metadata, schema observations, quality and reconciliation results,
 lineage) needed to answer them, and later an AI investigator that may only cite that evidence.
 
-## What works today (Milestone 1)
+## Milestone 1: the vertical slice
 
 ```
 deterministic generator ──► PostgreSQL source (shop.*)

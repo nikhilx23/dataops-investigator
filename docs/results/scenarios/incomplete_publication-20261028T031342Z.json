@@ -22,10 +22,10 @@
   "steps": [
     {
       "action": "retry_failed_batch",
-      "action_id": "09d13561-b0ca-40c3-97de-fdb25dc8f01f",
       "scope": {
-        "batch_id": "2f632066-5ae3-4241-a2a8-aa7ff56b43f1"
+        "batch_id": "cd69f6e5-6c22-491e-989b-924e1e776c30"
       },
+      "action_id": "a081608c-4085-4473-8353-fedd19176886",
       "preconditions": [
         {
           "check": "batch_failed_or_orphaned",
@@ -62,7 +62,6 @@
     },
     {
       "action": "rebuild_models",
-      "action_id": "a438ba53-66bb-4e8d-a2ff-c51492562f55",
       "scope": {
         "models": [
           "stg_orders",
@@ -70,6 +69,7 @@
           "stg_payments"
         ]
       },
+      "action_id": "09aed7bc-69d6-492d-84e0-7c5f93e6871c",
       "preconditions": [
         {
           "check": "models_are_derived_dbt_models",
@@ -89,8 +89,8 @@
   ],
   "baseline": {
     "label": "incomplete_publication-baseline",
-    "started_at": "2026-10-28T00:36:15.134875+00:00",
-    "seconds": 9.4,
+    "started_at": "2026-10-28T03:13:30.748976+00:00",
+    "seconds": 11.4,
     "ingest_problems": {},
     "dbt_exit": 0,
     "reconciliation": [
@@ -109,7 +109,7 @@
     }
   },
   "active_incidents_before": 0,
-  "injected_at": "2026-10-28T00:36:24.497124+00:00",
+  "injected_at": "2026-10-28T03:13:42.188479+00:00",
   "injection": {
     "ids": {
       "orders": [
@@ -214,8 +214,8 @@
   },
   "detection_cycle": {
     "label": "incomplete_publication-after",
-    "started_at": "2026-10-28T00:36:24.692557+00:00",
-    "seconds": 9.1,
+    "started_at": "2026-10-28T03:13:42.388372+00:00",
+    "seconds": 11.4,
     "ingest_problems": {
       "orders": {
         "status": "error",
@@ -240,17 +240,17 @@
   },
   "detected": [
     {
-      "incident_id": "483bd94a-1df8-4bb4-b9d6-b73dff5e0624",
+      "incident_id": "cdc0df75-48b4-4cad-a4f0-460f90b24647",
       "title": "Data quality + pipeline execution + reconciliation at raw.orders, 3 dashboard(s) affected",
       "severity": "sev1",
       "root": "warehouse.raw.orders",
-      "detected_at": "2026-10-28 00:36:33.810004+00:00",
-      "first_event_at": "2026-10-28 00:36:29.740488+00:00",
-      "seconds_from_injection_to_detection": 9.3
+      "detected_at": "2026-10-28 03:13:53.797062+00:00",
+      "first_event_at": "2026-10-28 03:13:47.450949+00:00",
+      "seconds_from_injection_to_detection": 11.6
     }
   ],
   "investigation": {
-    "investigation_id": "4611c03a-733b-4765-9b08-11ddc390aebf",
+    "investigation_id": "f37067c6-fcc0-4a0a-8932-f879b542762a",
     "mode": "fixture",
     "status": "completed",
     "top_cause": "orphan foreign keys at warehouse.raw.orders",
@@ -259,15 +259,15 @@
     "note": "fixture mode is a deterministic harness, not AI"
   },
   "timeline": {
-    "first_signal_at": "2026-10-28 00:36:29.740488+00:00",
-    "detected_at": "2026-10-28 00:36:33.810004+00:00",
-    "first_investigation_at": "2026-10-28 00:36:33.847882+00:00",
-    "recovery_started_at": "2026-10-28 00:36:34.154606+00:00",
-    "verified_at": "2026-10-28 00:36:46.189598+00:00",
-    "resolved_at": "2026-10-28 00:36:46.189598+00:00",
+    "first_signal_at": "2026-10-28 03:13:47.450949+00:00",
+    "detected_at": "2026-10-28 03:13:53.797062+00:00",
+    "first_investigation_at": "2026-10-28 03:13:53.847334+00:00",
+    "recovery_started_at": "2026-10-28 03:13:54.261135+00:00",
+    "verified_at": "2026-10-28 03:14:12.374047+00:00",
+    "resolved_at": "2026-10-28 03:14:12.374047+00:00",
     "detection_minutes": "0.1",
     "to_recovery_minutes": "0.0",
-    "to_verified_minutes": "0.2",
+    "to_verified_minutes": "0.3",
     "note": "all timestamps are recorded by the platform during actual runs"
   },
   "cleanup": {
@@ -281,8 +281,8 @@
   },
   "post_cleanup_cycle": {
     "label": "incomplete_publication-cleanup",
-    "started_at": "2026-10-28T00:36:50.284317+00:00",
-    "seconds": 9.5,
+    "started_at": "2026-10-28T03:14:16.608434+00:00",
+    "seconds": 11.4,
     "ingest_problems": {},
     "dbt_exit": 0,
     "reconciliation": [
@@ -300,5 +300,5 @@
       "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
     }
   },
-  "finished_at": "2026-10-28T00:36:59.827618+00:00"
+  "finished_at": "2026-10-28T03:14:27.996549+00:00"
 }

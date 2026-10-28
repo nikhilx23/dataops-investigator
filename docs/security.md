@@ -33,7 +33,7 @@ implemented and tested, and what is not.
 | `rel_app` | write `reliability.*` | touch source or warehouse |
 | `rel_reader` | SELECT on `reliability.*` (investigator, API reads, metrics) | write anything (tested) |
 
-`PUBLIC` privileges are revoked; statement timeouts are set per role; integration tests assert
+`PUBLIC` privileges are revoked; reader roles have statement timeouts (15–120 s); integration tests assert
 the privilege boundaries.
 
 ## AI investigator

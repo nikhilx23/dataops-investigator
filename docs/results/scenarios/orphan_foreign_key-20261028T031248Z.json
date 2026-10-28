@@ -27,19 +27,19 @@
   "steps": [
     {
       "action": "bounded_backfill",
-      "action_id": "7cdf8d2f-9d52-4f67-a43c-0211e45d70f9",
       "scope": {
         "tables": [
           "orders",
           "payments"
         ],
-        "start": "2026-10-27T00:35:39.173081+00:00",
-        "end": "2026-10-28T00:35:39.173081+00:00"
+        "start": "2026-10-27T03:12:59.071183+00:00",
+        "end": "2026-10-28T03:12:59.071183+00:00"
       },
+      "action_id": "5e3e1fb8-6a81-4161-9e01-f64498d77691",
       "preconditions": [
         {
           "check": "window_bounded",
-          "detail": "2026-10-27T00:35:39.173081+00:00 .. 2026-10-28T00:35:39.173081+00:00",
+          "detail": "2026-10-27T03:12:59.071183+00:00 .. 2026-10-28T03:12:59.071183+00:00",
           "status": "met"
         },
         {
@@ -71,7 +71,6 @@
     },
     {
       "action": "rebuild_models",
-      "action_id": "8e32007f-e512-473b-ae81-a75facab21f7",
       "scope": {
         "models": [
           "stg_orders",
@@ -79,6 +78,7 @@
           "stg_payments"
         ]
       },
+      "action_id": "507519df-0aeb-4ef5-b90f-3f63231fd496",
       "preconditions": [
         {
           "check": "models_are_derived_dbt_models",
@@ -98,8 +98,8 @@
   ],
   "baseline": {
     "label": "orphan_foreign_key-baseline",
-    "started_at": "2026-10-28T00:35:20.574989+00:00",
-    "seconds": 9.7,
+    "started_at": "2026-10-28T03:12:36.784849+00:00",
+    "seconds": 11.4,
     "ingest_problems": {},
     "dbt_exit": 0,
     "reconciliation": [
@@ -118,7 +118,7 @@
     }
   },
   "active_incidents_before": 0,
-  "injected_at": "2026-10-28T00:35:30.327667+00:00",
+  "injected_at": "2026-10-28T03:12:48.240410+00:00",
   "injection": {
     "ids": {
       "orders": [
@@ -141,24 +141,24 @@
       ]
     },
     "items_batch": {
-      "batch_id": "e70f14a1-fc25-4da6-af1e-79c18857d5dd",
+      "batch_id": "65759ba0-e719-4ace-b5d8-94cef892d838",
       "source_table": "order_items",
-      "window_start": "2026-10-28T00:35:21.574989+00:00",
-      "window_end": "2026-10-28T00:35:31.349574+00:00",
+      "window_start": "2026-10-28T03:12:37.784849+00:00",
+      "window_end": "2026-10-28T03:12:49.255931+00:00",
       "status": "committed",
       "extracted_rows": 4,
       "inserted_rows": 4,
       "duplicate_rows": 0,
       "pages": 1,
-      "content_checksum": "6ec61afb65f17cac7e6d9acfea8234267bbe91b87c34f7c79a253d710cab1299",
+      "content_checksum": "5ca6db4152d8a8d3ee80074bc854d20b248a51e3afaf19311a53ed33c8551b42",
       "attempts": 1,
       "error": null
     }
   },
   "detection_cycle": {
     "label": "orphan_foreign_key-after",
-    "started_at": "2026-10-28T00:35:30.421532+00:00",
-    "seconds": 8.6,
+    "started_at": "2026-10-28T03:12:48.309050+00:00",
+    "seconds": 10.6,
     "ingest_problems": {
       "orders": {
         "status": "skipped_by_scenario"
@@ -185,17 +185,17 @@
   },
   "detected": [
     {
-      "incident_id": "9ca25f4c-29e5-496d-8812-1f7782fd18e4",
+      "incident_id": "af515910-b58c-43c5-991d-ccf9dc9c2d64",
       "title": "Data quality + pipeline execution + reconciliation at raw.orders, 3 dashboard(s) affected",
       "severity": "sev1",
       "root": "warehouse.raw.orders",
-      "detected_at": "2026-10-28 00:35:39.011461+00:00",
-      "first_event_at": "2026-10-28 00:35:35.405056+00:00",
-      "seconds_from_injection_to_detection": 8.7
+      "detected_at": "2026-10-28 03:12:58.894957+00:00",
+      "first_event_at": "2026-10-28 03:12:53.526643+00:00",
+      "seconds_from_injection_to_detection": 10.7
     }
   ],
   "investigation": {
-    "investigation_id": "e959ebce-e543-43ee-b437-6ab21c06f6ec",
+    "investigation_id": "778b04d7-c1b1-4c36-bad2-cebb56b17b74",
     "mode": "fixture",
     "status": "completed",
     "top_cause": "orphan foreign keys at warehouse.raw.orders",
@@ -204,15 +204,15 @@
     "note": "fixture mode is a deterministic harness, not AI"
   },
   "timeline": {
-    "first_signal_at": "2026-10-28 00:35:35.405056+00:00",
-    "detected_at": "2026-10-28 00:35:39.011461+00:00",
-    "first_investigation_at": "2026-10-28 00:35:39.049649+00:00",
-    "recovery_started_at": "2026-10-28 00:35:39.326392+00:00",
-    "verified_at": "2026-10-28 00:35:51.902196+00:00",
-    "resolved_at": "2026-10-28 00:35:51.902196+00:00",
+    "first_signal_at": "2026-10-28 03:12:53.526643+00:00",
+    "detected_at": "2026-10-28 03:12:58.894957+00:00",
+    "first_investigation_at": "2026-10-28 03:12:58.933991+00:00",
+    "recovery_started_at": "2026-10-28 03:12:59.266172+00:00",
+    "verified_at": "2026-10-28 03:13:14.940969+00:00",
+    "resolved_at": "2026-10-28 03:13:14.940970+00:00",
     "detection_minutes": "0.1",
     "to_recovery_minutes": "0.0",
-    "to_verified_minutes": "0.2",
+    "to_verified_minutes": "0.3",
     "note": "all timestamps are recorded by the platform during actual runs"
   },
   "cleanup": {
@@ -226,8 +226,8 @@
   },
   "post_cleanup_cycle": {
     "label": "orphan_foreign_key-cleanup",
-    "started_at": "2026-10-28T00:35:56.023438+00:00",
-    "seconds": 10.0,
+    "started_at": "2026-10-28T03:13:19.152987+00:00",
+    "seconds": 11.2,
     "ingest_problems": {},
     "dbt_exit": 0,
     "reconciliation": [
@@ -245,5 +245,5 @@
       "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
     }
   },
-  "finished_at": "2026-10-28T00:36:05.997437+00:00"
+  "finished_at": "2026-10-28T03:13:30.397940+00:00"
 }

@@ -26,11 +26,11 @@
   "steps": [
     {
       "action": "escalate_to_owner",
-      "action_id": "a3da5d02-523b-411d-a0eb-bf5ec7daf2c1",
       "scope": {
         "dataset_id": "commerce_source.shop.refunds",
         "message": "Duplicate refund events (same payment, amount, timestamp). Please remove the duplicates."
       },
+      "action_id": "2c664522-28ff-45f8-8f31-ef9c900f5aec",
       "preconditions": [
         {
           "check": "dataset_has_owner",
@@ -51,13 +51,13 @@
     },
     {
       "action": "rebuild_models",
-      "action_id": "18814891-875b-4c02-87c9-1a967c197374",
       "scope": {
         "models": [
           "stg_refunds"
         ],
         "full_refresh": true
       },
+      "action_id": "677afb91-257a-463f-8ffb-096670f97e9b",
       "preconditions": [
         {
           "check": "models_are_derived_dbt_models",
@@ -77,8 +77,8 @@
   ],
   "baseline": {
     "label": "duplicate_business_events-baseline",
-    "started_at": "2026-10-28T00:31:42.337415+00:00",
-    "seconds": 9.2,
+    "started_at": "2026-10-28T03:11:08.460568+00:00",
+    "seconds": 11.5,
     "ingest_problems": {},
     "dbt_exit": 0,
     "reconciliation": [
@@ -97,7 +97,7 @@
     }
   },
   "active_incidents_before": 0,
-  "injected_at": "2026-10-28T00:31:51.509151+00:00",
+  "injected_at": "2026-10-28T03:11:19.927718+00:00",
   "injection": {
     "refunds": [
       900002000,
@@ -116,8 +116,8 @@
   },
   "detection_cycle": {
     "label": "duplicate_business_events-after",
-    "started_at": "2026-10-28T00:31:51.529513+00:00",
-    "seconds": 8.7,
+    "started_at": "2026-10-28T03:11:19.951522+00:00",
+    "seconds": 10.6,
     "ingest_problems": {},
     "dbt_exit": 1,
     "reconciliation": [
@@ -137,17 +137,17 @@
   },
   "detected": [
     {
-      "incident_id": "0b953df2-53a3-4a39-8196-149f203a4bbd",
+      "incident_id": "31451198-4de5-4bc8-90d8-74aa8196d9c9",
       "title": "Data quality + pipeline execution + reconciliation at stg_refunds, 3 dashboard(s) affected",
       "severity": "sev1",
       "root": "warehouse.staging.stg_refunds",
-      "detected_at": "2026-10-28 00:32:00.260468+00:00",
-      "first_event_at": "2026-10-28 00:31:56.980544+00:00",
-      "seconds_from_injection_to_detection": 8.8
+      "detected_at": "2026-10-28 03:11:30.537240+00:00",
+      "first_event_at": "2026-10-28 03:11:25.279696+00:00",
+      "seconds_from_injection_to_detection": 10.6
     }
   ],
   "investigation": {
-    "investigation_id": "11b7e6b1-db22-4ce4-a2cb-92e617531155",
+    "investigation_id": "63602678-10a6-4776-a76e-6be0011ac6d2",
     "mode": "fixture",
     "status": "completed",
     "top_cause": "quality check failed at warehouse.staging.stg_refunds",
@@ -156,16 +156,16 @@
     "note": "fixture mode is a deterministic harness, not AI"
   },
   "timeline": {
-    "first_signal_at": "2026-10-28 00:31:56.980544+00:00",
-    "detected_at": "2026-10-28 00:32:00.260468+00:00",
-    "first_investigation_at": "2026-10-28 00:32:00.303529+00:00",
-    "recovery_started_at": "2026-10-28 00:32:07.198153+00:00",
-    "verified_at": "2026-10-28 00:32:13.852949+00:00",
-    "resolved_at": "2026-10-28 00:32:13.852949+00:00",
+    "first_signal_at": "2026-10-28 03:11:25.279696+00:00",
+    "detected_at": "2026-10-28 03:11:30.537240+00:00",
+    "first_investigation_at": "2026-10-28 03:11:30.580208+00:00",
+    "recovery_started_at": "2026-10-28 03:11:38.888568+00:00",
+    "verified_at": "2026-10-28 03:11:47.201243+00:00",
+    "resolved_at": "2026-10-28 03:11:47.201243+00:00",
     "detection_minutes": "0.1",
     "to_recovery_minutes": "0.1",
-    "to_verified_minutes": "0.2",
+    "to_verified_minutes": "0.3",
     "note": "all timestamps are recorded by the platform during actual runs"
   },
-  "finished_at": "2026-10-28T00:32:13.872527+00:00"
+  "finished_at": "2026-10-28T03:11:47.221530+00:00"
 }

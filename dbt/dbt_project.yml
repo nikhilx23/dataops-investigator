@@ -20,12 +20,17 @@ flags:
 models:
   dataops:
     +persist_docs: {relation: true, columns: true}
+    # Staging and intermediate are tables, not views: as views over the generic JSONB landing
+    # table (DISTINCT ON per key) the planner badly underestimated their row counts, and a
+    # join of two such views took over 20 minutes at the medium profile (benchmarks.md).
     staging:
       +schema: staging
-      +materialized: view
+      +materialized: table
+      +post-hook: "analyze {{ this }}"
     intermediate:
       +schema: intermediate
-      +materialized: view
+      +materialized: table
+      +post-hook: "analyze {{ this }}"
     marts:
       +schema: marts
       +materialized: table

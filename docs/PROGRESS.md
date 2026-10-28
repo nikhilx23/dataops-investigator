@@ -257,7 +257,7 @@ services. Guides: [recovery.md](recovery.md), [failure_scenarios.md](failure_sce
 | Command / check | Result |
 |---|---|
 | Recovery of the open M3 schema-change incident (demo DB) | premature rebuild **rejected** with reason; approval by a service identity refused; `bounded_backfill` payments (79 rows) → verification_failed (1 signal left, correct); `rebuild_models` stg_payments+ (PASS=29) → **verified**; incident `resolved`, cause `confirmed` |
-| `dataops scenario run <2,3,5,6,7,8>` | every scenario: one sev1 incident 8.7–11.6 s after injection; recovery verified; cleanup reconciles — [results](results/scenarios/README.md) |
+| `dataops scenario run <2,3,5,6,7,8>` | every scenario: one sev1 incident 8.7–11.6 s after injection (re-run in M6 on table staging: 10.6–12.1 s); recovery verified; cleanup reconciles — [results](results/scenarios/README.md) |
 | Scenario 2 through the dashboard (Playwright driving the UI) | escalate → owner fix → rebuild proposed, approved, executed and verified from the UI; incident resolved/confirmed (screenshots 05–07) |
 | API (TestClient + live) | `/health`, `/overview`, `/incidents`, `/impact`, `/metrics` (95 series lines), writes refused without token (401/403), unknown action 409, model mode without key 409 |
 | Compose: `postgres`, `app db migrate`, `api`, `dashboard` containers | migrations 0004–0006 applied; API healthy; dashboard pages render with 0 exceptions |
@@ -300,10 +300,28 @@ unused when the optional Anthropic SDK is absent) and secret-scan failed (delibe
 credentials). Fixed (cast instead of ignores; `.gitleaks.toml` allowlisting those exact fake
 values). Second run (40621685613): **all 5 jobs passed**.
 
-## Next: Milestone 6 (benchmarks and portfolio)
-Benchmarks, remaining docs (architecture diagram,
-data dictionary, security, cost, demo script, troubleshooting, interview guide, resume
-bullets from verified results), optional Terraform; real-model evaluation when the key arrives.
+## Milestone 6: benchmarks and portfolio — **complete except real-model evaluation** (2026-10-28)
+
+Implemented: `benchmarks/run.py` (isolated `*_bench` databases) with results for the small and
+medium profiles ([benchmarks.md](benchmarks.md)); architecture diagram rendered from Mermaid;
+generated data dictionary (`scripts/data_dictionary.py`); security, cost, troubleshooting,
+demo script, interview guide; [portfolio.md](portfolio.md) with three resume bullets from
+verified results and the list of unfinished work; optional Azure Terraform sketch (not
+validated: no Terraform CLI here; never applied).
+
+| Command / check | Result |
+|---|---|
+| `python benchmarks/run.py --profile small` / `--profile medium` | 25,283 / 505,260 source rows; extraction ≈ 19,000 / 13,800 rows/s; dbt full build 6.5 s / 9.5 s; all reconciliations pass; 0 incident events on healthy data |
+| Medium profile with staging as views (first attempt) | full-refresh build of `fct_shipment_event` still running after 20+ minutes; stopped |
+| Staging/intermediate materialized as tables + `ANALYZE` | medium full build 9.5 s; `pytest -m "not spark"` 115 passed; `scripts/demo_m3.py` and a verified recovery; all scenario runs re-executed (results updated) |
+| Mermaid diagram | rendered with mmdc to `docs/architecture/overview.png` |
+| Relative links in README and docs | none broken (checked by script) |
+
+Found by verification and fixed:
+- Staging views over the generic JSONB landing table gave the planner row estimates off by
+  ~200x; a join of two of them made the medium build effectively hang -> staging and
+  intermediate are tables with `ANALYZE` (also turns a broken source cast into a failing
+  staging model instead of erroring tests, which the incident engine reports directly).
 
 ## Blockers
 - Real-model evaluation needs `ANTHROPIC_API_KEY` in the local `.env`.
