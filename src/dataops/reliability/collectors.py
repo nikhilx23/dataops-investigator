@@ -784,6 +784,19 @@ def collect_schema() -> int:
             " from information_schema.columns where table_schema = 'shop'"
             " order by table_name, ordinal_position"
         ).fetchall()
+        # information_schema only lists columns the role may read: a table whose SELECT was
+        # revoked would look like "all columns removed". Such tables are not observed (the
+        # failing extraction reports the access problem instead).
+        unreadable = {
+            r[0]
+            for r in src.execute(
+                "select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace"
+                " where n.nspname = 'shop' and c.relkind = 'r'"
+                " and not has_table_privilege(c.oid, 'SELECT')"
+            ).fetchall()
+        }
+    if unreadable:
+        log.warning("schema collector cannot read %s; not observed", sorted(unreadable))
     by_table: dict[str, list[dict[str, Any]]] = {}
     for t, name, dtype, clen, nullable in cols:
         by_table.setdefault(t, []).append(
@@ -792,6 +805,8 @@ def collect_schema() -> int:
     n = 0
     with connect(Role.REL_APP, application_name="dataops-collector") as conn, conn.transaction():
         for t, contract in contracts.items():
+            if t in unreadable:
+                continue
             observed = by_table.get(t, [])
             checksum = hashlib.sha256(json.dumps(observed, sort_keys=True).encode()).hexdigest()
             ds = f"commerce_source.shop.{t}"

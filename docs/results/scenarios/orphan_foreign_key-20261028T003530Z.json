@@ -1,0 +1,249 @@
+{
+  "scenario": "orphan_foreign_key",
+  "number": 6,
+  "title": "Order items loaded without their orders",
+  "scope": {
+    "tables": [
+      "orders",
+      "order_items"
+    ],
+    "rows": 4,
+    "skip_extract": [
+      "orders",
+      "payments"
+    ]
+  },
+  "ground_truth": {
+    "root_dataset": "warehouse.raw.orders",
+    "cause": "the orders extraction for the window did not run while order_items did",
+    "expected_detection": [
+      "relationships test stg_order_items.order_id -> stg_orders fails"
+    ],
+    "expected_impact": [
+      "warehouse.marts.fct_order_item",
+      "warehouse.marts.mart_daily_revenue"
+    ]
+  },
+  "steps": [
+    {
+      "action": "bounded_backfill",
+      "action_id": "7cdf8d2f-9d52-4f67-a43c-0211e45d70f9",
+      "scope": {
+        "tables": [
+          "orders",
+          "payments"
+        ],
+        "start": "2026-10-27T00:35:39.173081+00:00",
+        "end": "2026-10-28T00:35:39.173081+00:00"
+      },
+      "preconditions": [
+        {
+          "check": "window_bounded",
+          "detail": "2026-10-27T00:35:39.173081+00:00 .. 2026-10-28T00:35:39.173081+00:00",
+          "status": "met"
+        },
+        {
+          "check": "window_in_past",
+          "detail": "end is not in the future",
+          "status": "met"
+        },
+        {
+          "check": "no_running_ingestion_batch",
+          "detail": "0 running batch(es) for ['orders', 'payments']",
+          "status": "met"
+        },
+        {
+          "check": "source_schema_matches_contract",
+          "detail": "all tables match contract v1",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verification_failed",
+      "remaining_signals": [
+        "downstream_model_skipped",
+        "downstream_model_skipped",
+        "downstream_model_skipped",
+        "downstream_model_skipped",
+        "orphan_foreign_keys",
+        "reconciliation_failed"
+      ]
+    },
+    {
+      "action": "rebuild_models",
+      "action_id": "8e32007f-e512-473b-ae81-a75facab21f7",
+      "scope": {
+        "models": [
+          "stg_orders",
+          "stg_order_items",
+          "stg_payments"
+        ]
+      },
+      "preconditions": [
+        {
+          "check": "models_are_derived_dbt_models",
+          "detail": "all are dbt models",
+          "status": "met"
+        },
+        {
+          "check": "source_schema_matches_contract",
+          "detail": "all tables match contract v1",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verified",
+      "remaining_signals": []
+    }
+  ],
+  "baseline": {
+    "label": "orphan_foreign_key-baseline",
+    "started_at": "2026-10-28T00:35:20.574989+00:00",
+    "seconds": 9.7,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 0,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "active_incidents_before": 0,
+  "injected_at": "2026-10-28T00:35:30.327667+00:00",
+  "injection": {
+    "ids": {
+      "orders": [
+        900006000,
+        900006001,
+        900006002,
+        900006003
+      ],
+      "order_items": [
+        900006000,
+        900006001,
+        900006002,
+        900006003
+      ],
+      "payments": [
+        900006000,
+        900006001,
+        900006002,
+        900006003
+      ]
+    },
+    "items_batch": {
+      "batch_id": "e70f14a1-fc25-4da6-af1e-79c18857d5dd",
+      "source_table": "order_items",
+      "window_start": "2026-10-28T00:35:21.574989+00:00",
+      "window_end": "2026-10-28T00:35:31.349574+00:00",
+      "status": "committed",
+      "extracted_rows": 4,
+      "inserted_rows": 4,
+      "duplicate_rows": 0,
+      "pages": 1,
+      "content_checksum": "6ec61afb65f17cac7e6d9acfea8234267bbe91b87c34f7c79a253d710cab1299",
+      "attempts": 1,
+      "error": null
+    }
+  },
+  "detection_cycle": {
+    "label": "orphan_foreign_key-after",
+    "started_at": "2026-10-28T00:35:30.421532+00:00",
+    "seconds": 8.6,
+    "ingest_problems": {
+      "orders": {
+        "status": "skipped_by_scenario"
+      },
+      "payments": {
+        "status": "skipped_by_scenario"
+      }
+    },
+    "dbt_exit": 1,
+    "reconciliation": [
+      "fail",
+      "fail"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 8,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "detected": [
+    {
+      "incident_id": "9ca25f4c-29e5-496d-8812-1f7782fd18e4",
+      "title": "Data quality + pipeline execution + reconciliation at raw.orders, 3 dashboard(s) affected",
+      "severity": "sev1",
+      "root": "warehouse.raw.orders",
+      "detected_at": "2026-10-28 00:35:39.011461+00:00",
+      "first_event_at": "2026-10-28 00:35:35.405056+00:00",
+      "seconds_from_injection_to_detection": 8.7
+    }
+  ],
+  "investigation": {
+    "investigation_id": "e959ebce-e543-43ee-b437-6ab21c06f6ec",
+    "mode": "fixture",
+    "status": "completed",
+    "top_cause": "orphan foreign keys at warehouse.raw.orders",
+    "category": "data_quality",
+    "dataset": "warehouse.raw.orders",
+    "note": "fixture mode is a deterministic harness, not AI"
+  },
+  "timeline": {
+    "first_signal_at": "2026-10-28 00:35:35.405056+00:00",
+    "detected_at": "2026-10-28 00:35:39.011461+00:00",
+    "first_investigation_at": "2026-10-28 00:35:39.049649+00:00",
+    "recovery_started_at": "2026-10-28 00:35:39.326392+00:00",
+    "verified_at": "2026-10-28 00:35:51.902196+00:00",
+    "resolved_at": "2026-10-28 00:35:51.902196+00:00",
+    "detection_minutes": "0.1",
+    "to_recovery_minutes": "0.0",
+    "to_verified_minutes": "0.2",
+    "note": "all timestamps are recorded by the platform during actual runs"
+  },
+  "cleanup": {
+    "status": "removed",
+    "raw_records_removed": {
+      "orders": 4,
+      "payments": 4,
+      "order_items": 4
+    },
+    "full_refresh_exit": 0
+  },
+  "post_cleanup_cycle": {
+    "label": "orphan_foreign_key-cleanup",
+    "started_at": "2026-10-28T00:35:56.023438+00:00",
+    "seconds": 10.0,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 0,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "finished_at": "2026-10-28T00:36:05.997437+00:00"
+}

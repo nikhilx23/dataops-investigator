@@ -1,0 +1,190 @@
+{
+  "scenario": "stale_upstream_source",
+  "number": 5,
+  "title": "Extraction blocked: source read access revoked for orders",
+  "scope": {
+    "tables": [
+      "orders"
+    ]
+  },
+  "ground_truth": {
+    "root_dataset": "commerce_source.shop.orders",
+    "cause": "SELECT on shop.orders revoked from the extraction role; every orders batch fails",
+    "expected_detection": [
+      "failed_critical_task batch_ingestion ingest orders (permission denied)",
+      "freshness stale for warehouse.raw.orders once the lag passes 26 h"
+    ],
+    "expected_impact": [
+      "warehouse.staging.stg_orders",
+      "warehouse.marts.mart_order_fulfillment"
+    ]
+  },
+  "steps": [
+    {
+      "action": "escalate_to_owner",
+      "action_id": "1671950b-5283-412f-b17c-13469d1e866d",
+      "scope": {
+        "dataset_id": "commerce_source.shop.orders",
+        "message": "Extraction role lost SELECT on shop.orders; please restore the grant."
+      },
+      "preconditions": [
+        {
+          "check": "dataset_has_owner",
+          "detail": "owner commerce-platform",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded"
+    },
+    {
+      "cleanup_as_owner_fix": {
+        "status": "access_restored",
+        "table": "orders"
+      }
+    },
+    {
+      "action": "retry_failed_batch",
+      "action_id": "be5e04a6-c583-4ed6-894d-6131025cbf02",
+      "scope": {
+        "batch_id": "dcd16185-ff75-495b-8791-78f2b51b4e08"
+      },
+      "preconditions": [
+        {
+          "check": "batch_failed_or_orphaned",
+          "detail": "batch status failed; live loader sessions 0",
+          "status": "met"
+        },
+        {
+          "check": "not_already_reloaded",
+          "detail": "0 later committed batch(es) cover the window",
+          "status": "met"
+        },
+        {
+          "check": "no_running_ingestion_batch",
+          "detail": "0 running batch(es) for ['orders']",
+          "status": "met"
+        },
+        {
+          "check": "source_reachable",
+          "detail": "connected as src_reader",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verification_failed",
+      "remaining_signals": [
+        "reconciliation_failed"
+      ]
+    },
+    {
+      "action": "rebuild_models",
+      "action_id": "85390805-f4d2-4d21-938d-8000245195fd",
+      "scope": {
+        "models": [
+          "stg_orders"
+        ]
+      },
+      "preconditions": [
+        {
+          "check": "models_are_derived_dbt_models",
+          "detail": "all are dbt models",
+          "status": "met"
+        },
+        {
+          "check": "source_schema_matches_contract",
+          "detail": "all tables match contract v1",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verified",
+      "remaining_signals": []
+    }
+  ],
+  "baseline": {
+    "label": "stale_upstream_source-baseline",
+    "started_at": "2026-10-28T00:38:05.891873+00:00",
+    "seconds": 9.6,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 0,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "active_incidents_before": 0,
+  "injected_at": "2026-10-28T00:38:15.514503+00:00",
+  "injection": {
+    "table": "orders",
+    "touched": 25
+  },
+  "detection_cycle": {
+    "label": "stale_upstream_source-after",
+    "started_at": "2026-10-28T00:38:15.540039+00:00",
+    "seconds": 10.2,
+    "ingest_problems": {
+      "orders": {
+        "status": "error",
+        "error": "InsufficientPrivilege: permission denied for table orders"
+      }
+    },
+    "dbt_exit": 0,
+    "reconciliation": [
+      "error",
+      "error"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "failed"
+    },
+    "evaluation": {
+      "new_events": 3,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "detected": [
+    {
+      "incident_id": "e9184075-01a4-4201-9d82-51930172479f",
+      "title": "Pipeline execution + reconciliation at raw.orders, 3 dashboard(s) affected",
+      "severity": "sev1",
+      "root": "warehouse.raw.orders",
+      "detected_at": "2026-10-28 00:38:25.718655+00:00",
+      "first_event_at": "2026-10-28 00:38:15.776260+00:00",
+      "seconds_from_injection_to_detection": 10.2
+    }
+  ],
+  "investigation": {
+    "investigation_id": "df9e5130-c5e3-4e51-bd44-7851a0bd134e",
+    "mode": "fixture",
+    "status": "completed",
+    "top_cause": "failed critical task at warehouse.raw.orders",
+    "category": "pipeline_execution",
+    "dataset": "warehouse.raw.orders",
+    "note": "fixture mode is a deterministic harness, not AI"
+  },
+  "timeline": {
+    "first_signal_at": "2026-10-28 00:38:15.776260+00:00",
+    "detected_at": "2026-10-28 00:38:25.718655+00:00",
+    "first_investigation_at": "2026-10-28 00:38:25.759850+00:00",
+    "recovery_started_at": "2026-10-28 00:38:26.337276+00:00",
+    "verified_at": "2026-10-28 00:38:39.840298+00:00",
+    "resolved_at": "2026-10-28 00:38:39.840298+00:00",
+    "detection_minutes": "0.2",
+    "to_recovery_minutes": "0.0",
+    "to_verified_minutes": "0.2",
+    "note": "all timestamps are recorded by the platform during actual runs"
+  },
+  "finished_at": "2026-10-28T00:38:39.860672+00:00"
+}

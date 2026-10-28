@@ -34,6 +34,8 @@ All data is synthetic. The fictional company sells physical goods online in one 
   several partial refunds; the sum of its refunds never exceeds its captured amount.
 - A partially refunded payment keeps status `succeeded`.
 - Capture can happen days after the order is placed (late-arriving payments).
+- A refund event is identified by (payment, amount, refund timestamp): two refunds sharing all three
+  are one event delivered twice (test `assert_no_duplicate_refund_events`).
 
 ## Revenue metrics (mart_daily_revenue, grain: one row per UTC date)
 

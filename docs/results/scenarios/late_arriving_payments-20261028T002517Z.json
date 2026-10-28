@@ -1,0 +1,236 @@
+{
+  "scenario": "late_arriving_payments",
+  "number": 3,
+  "title": "Captured payments committed late with old timestamps",
+  "scope": {
+    "tables": [
+      "payments"
+    ],
+    "rows": 6
+  },
+  "ground_truth": {
+    "root_dataset": "commerce_source.shop.payments",
+    "cause": "payments committed with updated_at days behind the extraction watermark, so watermark-based extraction never read them",
+    "expected_detection": [
+      "revenue.daily.source_vs_mart fails on the capture dates",
+      "ingestion.row_counts passes (same rows, different versions)"
+    ],
+    "expected_impact": [
+      "warehouse.marts.mart_daily_revenue",
+      "bi.dashboard.revenue_overview"
+    ]
+  },
+  "steps": [
+    {
+      "action": "bounded_backfill",
+      "action_id": "10fdafe4-2698-4937-bf74-f56b87283c47",
+      "scope": {
+        "tables": [
+          "orders",
+          "payments"
+        ],
+        "start": "2026-03-30T00:59:14+00:00",
+        "end": "2026-03-30T23:29:42+00:00"
+      },
+      "preconditions": [
+        {
+          "check": "window_bounded",
+          "detail": "2026-03-30T00:59:14+00:00 .. 2026-03-30T23:29:42+00:00",
+          "status": "met"
+        },
+        {
+          "check": "window_in_past",
+          "detail": "end is not in the future",
+          "status": "met"
+        },
+        {
+          "check": "no_running_ingestion_batch",
+          "detail": "0 running batch(es) for ['orders', 'payments']",
+          "status": "met"
+        },
+        {
+          "check": "source_schema_matches_contract",
+          "detail": "all tables match contract v1",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verification_failed",
+      "remaining_signals": [
+        "reconciliation_failed"
+      ]
+    },
+    {
+      "action": "rebuild_models",
+      "action_id": "c1be61e9-6700-4785-ba50-43fdb5d76356",
+      "scope": {
+        "models": [
+          "stg_orders",
+          "stg_payments"
+        ],
+        "full_refresh": true
+      },
+      "preconditions": [
+        {
+          "check": "models_are_derived_dbt_models",
+          "detail": "all are dbt models",
+          "status": "met"
+        },
+        {
+          "check": "source_schema_matches_contract",
+          "detail": "all tables match contract v1",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verified",
+      "remaining_signals": []
+    }
+  ],
+  "baseline": {
+    "label": "late_arriving_payments-baseline",
+    "started_at": "2026-10-28T00:25:09.409299+00:00",
+    "seconds": 8.1,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 0,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "active_incidents_before": 0,
+  "injected_at": "2026-10-28T00:25:17.477333+00:00",
+  "injection": {
+    "payments": [
+      {
+        "payment_id": 501889,
+        "updated_at": "2026-03-30 00:59:14+00:00",
+        "order_id": 101726,
+        "order_status": "placed"
+      },
+      {
+        "payment_id": 501905,
+        "updated_at": "2026-03-30 09:42:16+00:00",
+        "order_id": 101741,
+        "order_status": "placed"
+      },
+      {
+        "payment_id": 501910,
+        "updated_at": "2026-03-30 10:56:31+00:00",
+        "order_id": 101746,
+        "order_status": "placed"
+      },
+      {
+        "payment_id": 501914,
+        "updated_at": "2026-03-30 11:46:20+00:00",
+        "order_id": 101750,
+        "order_status": "placed"
+      },
+      {
+        "payment_id": 501915,
+        "updated_at": "2026-03-30 12:09:07+00:00",
+        "order_id": 101751,
+        "order_status": "placed"
+      },
+      {
+        "payment_id": 501976,
+        "updated_at": "2026-03-30 22:29:42+00:00",
+        "order_id": 101799,
+        "order_status": "placed"
+      }
+    ],
+    "window": [
+      "2026-03-30 00:59:14+00:00",
+      "2026-03-30 23:29:42+00:00"
+    ]
+  },
+  "detection_cycle": {
+    "label": "late_arriving_payments-after",
+    "started_at": "2026-10-28T00:25:17.504767+00:00",
+    "seconds": 8.3,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "fail"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 1,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "detected": [
+    {
+      "incident_id": "001c4d66-87e6-49df-9aae-e1dfbede3c3d",
+      "title": "Reconciliation at mart_daily_revenue, 1 dashboard(s) affected",
+      "severity": "sev1",
+      "root": "warehouse.marts.mart_daily_revenue",
+      "detected_at": "2026-10-28 00:25:25.776193+00:00",
+      "first_event_at": "2026-10-28 00:25:25.039075+00:00",
+      "seconds_from_injection_to_detection": 8.3
+    }
+  ],
+  "investigation": {
+    "investigation_id": "c16339f0-2546-4a55-a314-a3569c939e7e",
+    "mode": "fixture",
+    "status": "completed",
+    "top_cause": "reconciliation failed at warehouse.marts.mart_daily_revenue",
+    "category": "reconciliation",
+    "dataset": "warehouse.marts.mart_daily_revenue",
+    "note": "fixture mode is a deterministic harness, not AI"
+  },
+  "timeline": {
+    "first_signal_at": "2026-10-28 00:25:25.039075+00:00",
+    "detected_at": "2026-10-28 00:25:25.776193+00:00",
+    "first_investigation_at": "2026-10-28 00:25:25.822813+00:00",
+    "recovery_started_at": "2026-10-28 00:25:26.120800+00:00",
+    "verified_at": "2026-10-28 00:25:36.236235+00:00",
+    "resolved_at": "2026-10-28 00:25:36.236235+00:00",
+    "detection_minutes": "0.0",
+    "to_recovery_minutes": "0.0",
+    "to_verified_minutes": "0.2",
+    "note": "all timestamps are recorded by the platform during actual runs"
+  },
+  "cleanup": {
+    "status": "reverted",
+    "payments": 6
+  },
+  "post_cleanup_cycle": {
+    "label": "late_arriving_payments-cleanup",
+    "started_at": "2026-10-28T00:25:36.292199+00:00",
+    "seconds": 8.1,
+    "ingest_problems": {},
+    "dbt_exit": 1,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 1,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "finished_at": "2026-10-28T00:25:44.388722+00:00"
+}

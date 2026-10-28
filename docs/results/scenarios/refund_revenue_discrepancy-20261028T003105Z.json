@@ -1,0 +1,222 @@
+{
+  "scenario": "refund_revenue_discrepancy",
+  "number": 8,
+  "title": "Refund corrections written with original timestamps",
+  "scope": {
+    "tables": [
+      "refunds"
+    ],
+    "rows": 5
+  },
+  "ground_truth": {
+    "root_dataset": "commerce_source.shop.refunds",
+    "cause": "refund amounts corrected in the source with back-dated updated_at (behind the extraction watermark); extraction missed the new versions",
+    "expected_detection": [
+      "revenue.daily.source_vs_mart fails on refunded_cents for the refund dates"
+    ],
+    "expected_impact": [
+      "warehouse.marts.mart_daily_revenue",
+      "bi.dashboard.finance_reconciliation"
+    ]
+  },
+  "steps": [
+    {
+      "action": "bounded_backfill",
+      "action_id": "1afcf6f0-37d0-490d-b3fb-0ef3f7f9a6c3",
+      "scope": {
+        "tables": [
+          "refunds"
+        ],
+        "start": "2026-03-29T19:47:06+00:00",
+        "end": "2026-03-30T05:39:25+00:00"
+      },
+      "preconditions": [
+        {
+          "check": "window_bounded",
+          "detail": "2026-03-29T19:47:06+00:00 .. 2026-03-30T05:39:25+00:00",
+          "status": "met"
+        },
+        {
+          "check": "window_in_past",
+          "detail": "end is not in the future",
+          "status": "met"
+        },
+        {
+          "check": "no_running_ingestion_batch",
+          "detail": "0 running batch(es) for ['refunds']",
+          "status": "met"
+        },
+        {
+          "check": "source_schema_matches_contract",
+          "detail": "all tables match contract v1",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verification_failed",
+      "remaining_signals": [
+        "reconciliation_failed"
+      ]
+    },
+    {
+      "action": "rebuild_models",
+      "action_id": "660bed8c-e340-4ab8-b6e6-36f21afa1100",
+      "scope": {
+        "models": [
+          "stg_refunds"
+        ],
+        "full_refresh": true
+      },
+      "preconditions": [
+        {
+          "check": "models_are_derived_dbt_models",
+          "detail": "all are dbt models",
+          "status": "met"
+        },
+        {
+          "check": "source_schema_matches_contract",
+          "detail": "all tables match contract v1",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verified",
+      "remaining_signals": []
+    }
+  ],
+  "baseline": {
+    "label": "refund_revenue_discrepancy-baseline",
+    "started_at": "2026-10-28T00:30:56.850665+00:00",
+    "seconds": 8.6,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 0,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "active_incidents_before": 0,
+  "injected_at": "2026-10-28T00:31:05.496547+00:00",
+  "injection": {
+    "refunds": [
+      {
+        "refund_id": 900154,
+        "amount_cents": 1299,
+        "updated_at": "2026-03-30 05:38:25+00:00"
+      },
+      {
+        "refund_id": 900155,
+        "amount_cents": 22197,
+        "updated_at": "2026-03-30 01:35:20+00:00"
+      },
+      {
+        "refund_id": 900140,
+        "amount_cents": 6998,
+        "updated_at": "2026-03-29 23:26:32+00:00"
+      },
+      {
+        "refund_id": 900134,
+        "amount_cents": 10798,
+        "updated_at": "2026-03-29 20:41:37+00:00"
+      },
+      {
+        "refund_id": 900143,
+        "amount_cents": 14397,
+        "updated_at": "2026-03-29 19:48:06+00:00"
+      }
+    ],
+    "window": [
+      "2026-03-29 19:47:06+00:00",
+      "2026-03-30 05:39:25+00:00"
+    ]
+  },
+  "detection_cycle": {
+    "label": "refund_revenue_discrepancy-after",
+    "started_at": "2026-10-28T00:31:05.517809+00:00",
+    "seconds": 8.7,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "fail"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 1,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "detected": [
+    {
+      "incident_id": "7cc8d6da-c2d7-4fc9-9016-84b1de7da31b",
+      "title": "Reconciliation at mart_daily_revenue, 1 dashboard(s) affected",
+      "severity": "sev1",
+      "root": "warehouse.marts.mart_daily_revenue",
+      "detected_at": "2026-10-28 00:31:14.226619+00:00",
+      "first_event_at": "2026-10-28 00:31:12.708740+00:00",
+      "seconds_from_injection_to_detection": 8.7
+    }
+  ],
+  "investigation": {
+    "investigation_id": "8370a541-d991-47f1-a5a1-01e9c6a867f3",
+    "mode": "fixture",
+    "status": "completed",
+    "top_cause": "reconciliation failed at warehouse.marts.mart_daily_revenue",
+    "category": "reconciliation",
+    "dataset": "warehouse.marts.mart_daily_revenue",
+    "note": "fixture mode is a deterministic harness, not AI"
+  },
+  "timeline": {
+    "first_signal_at": "2026-10-28 00:31:12.708740+00:00",
+    "detected_at": "2026-10-28 00:31:14.226619+00:00",
+    "first_investigation_at": "2026-10-28 00:31:14.272758+00:00",
+    "recovery_started_at": "2026-10-28 00:31:14.564408+00:00",
+    "verified_at": "2026-10-28 00:31:25.022869+00:00",
+    "resolved_at": "2026-10-28 00:31:25.022869+00:00",
+    "detection_minutes": "0.0",
+    "to_recovery_minutes": "0.0",
+    "to_verified_minutes": "0.2",
+    "note": "all timestamps are recorded by the platform during actual runs"
+  },
+  "cleanup": {
+    "status": "reverted",
+    "refunds": 5
+  },
+  "post_cleanup_cycle": {
+    "label": "refund_revenue_discrepancy-cleanup",
+    "started_at": "2026-10-28T00:31:25.068982+00:00",
+    "seconds": 9.3,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 0,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "finished_at": "2026-10-28T00:31:34.406538+00:00"
+}

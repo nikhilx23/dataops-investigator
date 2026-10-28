@@ -365,6 +365,95 @@ def cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_recovery(args: argparse.Namespace) -> int:
+    from dataops.recovery import service
+
+    c = args.recovery_cmd
+    try:
+        if c == "actions":
+            from dataops.recovery.actions import SPECS
+
+            _emit(
+                {
+                    k: {
+                        "description": v.description,
+                        "changes_data": v.changes_data,
+                        "scope_schema": v.scope_model.model_json_schema(),
+                    }
+                    for k, v in SPECS.items()
+                }
+            )
+        elif c == "propose":
+            if not (args.action and args.scope):
+                raise SystemExit("propose needs --action and --scope '<json>'")
+            _emit(
+                service.propose(
+                    args.action,
+                    json.loads(args.scope),
+                    incident_id=args.incident,
+                    proposed_by=args.actor or os.environ.get("USER", "cli"),
+                    investigation_id=args.investigation,
+                )
+            )
+        elif c in ("approve", "reject"):
+            if not (args.id and args.actor and args.reason):
+                raise SystemExit(f"{c} needs an action id, --actor and --reason")
+            fn = service.approve if c == "approve" else service.reject
+            _emit(fn(args.id, args.actor, args.reason))
+        elif c == "execute":
+            if not (args.id and args.actor):
+                raise SystemExit("execute needs an action id and --actor")
+            _emit(service.execute(args.id, args.actor))
+        elif c == "verify":
+            if not (args.id and args.actor):
+                raise SystemExit("verify needs an action id and --actor")
+            _emit(service.verify(args.id, args.actor))
+        elif c == "show":
+            _emit(service.get(args.id))
+        elif c == "list":
+            _emit(service.list_actions(args.incident))
+        elif c == "timeline":
+            _emit(service.timeline(args.id or args.incident))
+    except service.RecoveryError as exc:
+        print(f"refused: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
+def cmd_scenario(args: argparse.Namespace) -> int:
+    from dataops.scenarios import library, runner
+
+    if args.scenario_cmd == "list":
+        _emit(
+            {
+                k: {
+                    "number": v.number,
+                    "title": v.title,
+                    "state": library.state(k) if k != "streaming_interruption" else "full profile",
+                }
+                for k, v in library.SCENARIOS.items()
+            }
+        )
+    elif args.scenario_cmd == "inject":
+        _emit(library.INJECT[args.name]())
+    elif args.scenario_cmd == "cleanup":
+        _emit(library.CLEANUP[args.name]())
+    elif args.scenario_cmd == "cycle":
+        _emit(runner.cycle("manual"))
+    elif args.scenario_cmd == "run":
+        if not args.actor:
+            raise SystemExit("run needs --actor (the named person approving recovery actions)")
+        _emit(
+            runner.run(
+                args.name,
+                args.actor,
+                None if args.investigate == "none" else args.investigate,
+                recover=not args.no_recover,
+            )
+        )
+    return 0
+
+
 def cmd_reset(args: argparse.Namespace) -> int:
     if not args.confirm_synthetic_reset:
         raise SystemExit(
@@ -534,6 +623,38 @@ def build_parser() -> argparse.ArgumentParser:
     inv.add_argument("--show", action="store_true", help="show a recorded investigation")
     inv.add_argument("--verbose", action="store_true")
     inv.set_defaults(func=cmd_investigate)
+
+    rec2 = sub.add_parser("recovery", help="controlled recovery: propose, approve, execute, verify")
+    rec2.add_argument(
+        "recovery_cmd",
+        choices=[
+            "actions",
+            "propose",
+            "approve",
+            "reject",
+            "execute",
+            "verify",
+            "show",
+            "list",
+            "timeline",
+        ],
+    )
+    rec2.add_argument("id", nargs="?", help="recovery action id (incident id for timeline)")
+    rec2.add_argument("--action")
+    rec2.add_argument("--scope", help="JSON scope for the action")
+    rec2.add_argument("--incident")
+    rec2.add_argument("--investigation")
+    rec2.add_argument("--actor", help="named person performing the step")
+    rec2.add_argument("--reason")
+    rec2.set_defaults(func=cmd_recovery)
+
+    scn = sub.add_parser("scenario", help="failure scenarios 2-8: inject, run end to end, clean up")
+    scn.add_argument("scenario_cmd", choices=["list", "inject", "cleanup", "run", "cycle"])
+    scn.add_argument("name", nargs="?")
+    scn.add_argument("--actor", help="named person approving recovery actions (run)")
+    scn.add_argument("--investigate", choices=["fixture", "model", "none"], default="fixture")
+    scn.add_argument("--no-recover", action="store_true")
+    scn.set_defaults(func=cmd_scenario)
 
     evl = sub.add_parser("eval", help="run the investigator evaluation suite on *_eval databases")
     evl.add_argument("--mode", choices=["model", "fixture"], required=True)

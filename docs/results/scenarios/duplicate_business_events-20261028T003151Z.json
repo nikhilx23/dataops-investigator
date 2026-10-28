@@ -1,0 +1,171 @@
+{
+  "scenario": "duplicate_business_events",
+  "number": 2,
+  "title": "Duplicate refund events from the refunds service",
+  "scope": {
+    "tables": [
+      "refunds"
+    ],
+    "rows": 5
+  },
+  "ground_truth": {
+    "root_dataset": "commerce_source.shop.refunds",
+    "cause": "the refunds service submitted 5 refunds twice (new refund_id, same payment, amount and timestamp)",
+    "expected_detection": [
+      "dbt test assert_no_duplicate_refund_events fails",
+      "refunds exceed captured amount (assert_refunds_never_exceed_capture)",
+      "downstream payment models skipped"
+    ],
+    "expected_impact": [
+      "warehouse.marts.fct_payment_transaction",
+      "warehouse.marts.mart_daily_revenue",
+      "bi.dashboard.revenue_overview",
+      "bi.dashboard.finance_reconciliation"
+    ]
+  },
+  "steps": [
+    {
+      "action": "escalate_to_owner",
+      "action_id": "a3da5d02-523b-411d-a0eb-bf5ec7daf2c1",
+      "scope": {
+        "dataset_id": "commerce_source.shop.refunds",
+        "message": "Duplicate refund events (same payment, amount, timestamp). Please remove the duplicates."
+      },
+      "preconditions": [
+        {
+          "check": "dataset_has_owner",
+          "detail": "owner commerce-platform",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded"
+    },
+    {
+      "cleanup_as_owner_fix": {
+        "status": "removed",
+        "raw_records_removed": {
+          "refunds": 5
+        },
+        "full_refresh_exit": 0
+      }
+    },
+    {
+      "action": "rebuild_models",
+      "action_id": "18814891-875b-4c02-87c9-1a967c197374",
+      "scope": {
+        "models": [
+          "stg_refunds"
+        ],
+        "full_refresh": true
+      },
+      "preconditions": [
+        {
+          "check": "models_are_derived_dbt_models",
+          "detail": "all are dbt models",
+          "status": "met"
+        },
+        {
+          "check": "source_schema_matches_contract",
+          "detail": "all tables match contract v1",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verified",
+      "remaining_signals": []
+    }
+  ],
+  "baseline": {
+    "label": "duplicate_business_events-baseline",
+    "started_at": "2026-10-28T00:31:42.337415+00:00",
+    "seconds": 9.2,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 0,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "active_incidents_before": 0,
+  "injected_at": "2026-10-28T00:31:51.509151+00:00",
+  "injection": {
+    "refunds": [
+      900002000,
+      900002001,
+      900002002,
+      900002003,
+      900002004
+    ],
+    "duplicated_from": [
+      900155,
+      900154,
+      900153,
+      900152,
+      900151
+    ]
+  },
+  "detection_cycle": {
+    "label": "duplicate_business_events-after",
+    "started_at": "2026-10-28T00:31:51.529513+00:00",
+    "seconds": 8.7,
+    "ingest_problems": {},
+    "dbt_exit": 1,
+    "reconciliation": [
+      "pass",
+      "fail"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 8,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "detected": [
+    {
+      "incident_id": "0b953df2-53a3-4a39-8196-149f203a4bbd",
+      "title": "Data quality + pipeline execution + reconciliation at stg_refunds, 3 dashboard(s) affected",
+      "severity": "sev1",
+      "root": "warehouse.staging.stg_refunds",
+      "detected_at": "2026-10-28 00:32:00.260468+00:00",
+      "first_event_at": "2026-10-28 00:31:56.980544+00:00",
+      "seconds_from_injection_to_detection": 8.8
+    }
+  ],
+  "investigation": {
+    "investigation_id": "11b7e6b1-db22-4ce4-a2cb-92e617531155",
+    "mode": "fixture",
+    "status": "completed",
+    "top_cause": "quality check failed at warehouse.staging.stg_refunds",
+    "category": "data_quality",
+    "dataset": "warehouse.staging.stg_refunds",
+    "note": "fixture mode is a deterministic harness, not AI"
+  },
+  "timeline": {
+    "first_signal_at": "2026-10-28 00:31:56.980544+00:00",
+    "detected_at": "2026-10-28 00:32:00.260468+00:00",
+    "first_investigation_at": "2026-10-28 00:32:00.303529+00:00",
+    "recovery_started_at": "2026-10-28 00:32:07.198153+00:00",
+    "verified_at": "2026-10-28 00:32:13.852949+00:00",
+    "resolved_at": "2026-10-28 00:32:13.852949+00:00",
+    "detection_minutes": "0.1",
+    "to_recovery_minutes": "0.1",
+    "to_verified_minutes": "0.2",
+    "note": "all timestamps are recorded by the platform during actual runs"
+  },
+  "finished_at": "2026-10-28T00:32:13.872527+00:00"
+}

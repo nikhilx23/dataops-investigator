@@ -1,0 +1,304 @@
+{
+  "scenario": "incomplete_publication",
+  "number": 7,
+  "title": "Loader killed mid-batch (nothing published)",
+  "scope": {
+    "tables": [
+      "orders"
+    ],
+    "rows": 30
+  },
+  "ground_truth": {
+    "root_dataset": "warehouse.raw.orders",
+    "cause": "the orders loader process was killed during a batch; the batch never committed",
+    "expected_detection": [
+      "ingestion.row_counts.source_vs_raw fails for orders",
+      "orphan payments / items in staging tests"
+    ],
+    "expected_impact": [
+      "warehouse.staging.stg_orders"
+    ]
+  },
+  "steps": [
+    {
+      "action": "retry_failed_batch",
+      "action_id": "09d13561-b0ca-40c3-97de-fdb25dc8f01f",
+      "scope": {
+        "batch_id": "2f632066-5ae3-4241-a2a8-aa7ff56b43f1"
+      },
+      "preconditions": [
+        {
+          "check": "batch_failed_or_orphaned",
+          "detail": "batch status running; live loader sessions 0",
+          "status": "met"
+        },
+        {
+          "check": "not_already_reloaded",
+          "detail": "0 later committed batch(es) cover the window",
+          "status": "met"
+        },
+        {
+          "check": "no_live_loader",
+          "detail": "0 live loader session(s)",
+          "status": "met"
+        },
+        {
+          "check": "source_reachable",
+          "detail": "connected as src_reader",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verification_failed",
+      "remaining_signals": [
+        "downstream_model_skipped",
+        "downstream_model_skipped",
+        "downstream_model_skipped",
+        "downstream_model_skipped",
+        "orphan_foreign_keys",
+        "orphan_foreign_keys",
+        "reconciliation_failed"
+      ]
+    },
+    {
+      "action": "rebuild_models",
+      "action_id": "a438ba53-66bb-4e8d-a2ff-c51492562f55",
+      "scope": {
+        "models": [
+          "stg_orders",
+          "stg_order_items",
+          "stg_payments"
+        ]
+      },
+      "preconditions": [
+        {
+          "check": "models_are_derived_dbt_models",
+          "detail": "all are dbt models",
+          "status": "met"
+        },
+        {
+          "check": "source_schema_matches_contract",
+          "detail": "all tables match contract v1",
+          "status": "met"
+        }
+      ],
+      "executed": "succeeded",
+      "verified": "verified",
+      "remaining_signals": []
+    }
+  ],
+  "baseline": {
+    "label": "incomplete_publication-baseline",
+    "started_at": "2026-10-28T00:36:15.134875+00:00",
+    "seconds": 9.4,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 0,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "active_incidents_before": 0,
+  "injected_at": "2026-10-28T00:36:24.497124+00:00",
+  "injection": {
+    "ids": {
+      "orders": [
+        900007000,
+        900007001,
+        900007002,
+        900007003,
+        900007004,
+        900007005,
+        900007006,
+        900007007,
+        900007008,
+        900007009,
+        900007010,
+        900007011,
+        900007012,
+        900007013,
+        900007014,
+        900007015,
+        900007016,
+        900007017,
+        900007018,
+        900007019,
+        900007020,
+        900007021,
+        900007022,
+        900007023,
+        900007024,
+        900007025,
+        900007026,
+        900007027,
+        900007028,
+        900007029
+      ],
+      "order_items": [
+        900007000,
+        900007001,
+        900007002,
+        900007003,
+        900007004,
+        900007005,
+        900007006,
+        900007007,
+        900007008,
+        900007009,
+        900007010,
+        900007011,
+        900007012,
+        900007013,
+        900007014,
+        900007015,
+        900007016,
+        900007017,
+        900007018,
+        900007019,
+        900007020,
+        900007021,
+        900007022,
+        900007023,
+        900007024,
+        900007025,
+        900007026,
+        900007027,
+        900007028,
+        900007029
+      ],
+      "payments": [
+        900007000,
+        900007001,
+        900007002,
+        900007003,
+        900007004,
+        900007005,
+        900007006,
+        900007007,
+        900007008,
+        900007009,
+        900007010,
+        900007011,
+        900007012,
+        900007013,
+        900007014,
+        900007015,
+        900007016,
+        900007017,
+        900007018,
+        900007019,
+        900007020,
+        900007021,
+        900007022,
+        900007023,
+        900007024,
+        900007025,
+        900007026,
+        900007027,
+        900007028,
+        900007029
+      ]
+    },
+    "child_exit": -9,
+    "child_signal": 9
+  },
+  "detection_cycle": {
+    "label": "incomplete_publication-after",
+    "started_at": "2026-10-28T00:36:24.692557+00:00",
+    "seconds": 9.1,
+    "ingest_problems": {
+      "orders": {
+        "status": "error",
+        "error": "OverlappingWriterError: another batch for orders is running; refusing to start an overlapping writer"
+      }
+    },
+    "dbt_exit": 1,
+    "reconciliation": [
+      "fail",
+      "fail"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 8,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "detected": [
+    {
+      "incident_id": "483bd94a-1df8-4bb4-b9d6-b73dff5e0624",
+      "title": "Data quality + pipeline execution + reconciliation at raw.orders, 3 dashboard(s) affected",
+      "severity": "sev1",
+      "root": "warehouse.raw.orders",
+      "detected_at": "2026-10-28 00:36:33.810004+00:00",
+      "first_event_at": "2026-10-28 00:36:29.740488+00:00",
+      "seconds_from_injection_to_detection": 9.3
+    }
+  ],
+  "investigation": {
+    "investigation_id": "4611c03a-733b-4765-9b08-11ddc390aebf",
+    "mode": "fixture",
+    "status": "completed",
+    "top_cause": "orphan foreign keys at warehouse.raw.orders",
+    "category": "data_quality",
+    "dataset": "warehouse.raw.orders",
+    "note": "fixture mode is a deterministic harness, not AI"
+  },
+  "timeline": {
+    "first_signal_at": "2026-10-28 00:36:29.740488+00:00",
+    "detected_at": "2026-10-28 00:36:33.810004+00:00",
+    "first_investigation_at": "2026-10-28 00:36:33.847882+00:00",
+    "recovery_started_at": "2026-10-28 00:36:34.154606+00:00",
+    "verified_at": "2026-10-28 00:36:46.189598+00:00",
+    "resolved_at": "2026-10-28 00:36:46.189598+00:00",
+    "detection_minutes": "0.1",
+    "to_recovery_minutes": "0.0",
+    "to_verified_minutes": "0.2",
+    "note": "all timestamps are recorded by the platform during actual runs"
+  },
+  "cleanup": {
+    "status": "removed",
+    "raw_records_removed": {
+      "orders": 30,
+      "payments": 30,
+      "order_items": 30
+    },
+    "full_refresh_exit": 0
+  },
+  "post_cleanup_cycle": {
+    "label": "incomplete_publication-cleanup",
+    "started_at": "2026-10-28T00:36:50.284317+00:00",
+    "seconds": 9.5,
+    "ingest_problems": {},
+    "dbt_exit": 0,
+    "reconciliation": [
+      "pass",
+      "pass"
+    ],
+    "collectors": {
+      "dbt": "success",
+      "ingestion": "success",
+      "schema": "success",
+      "freshness": "success"
+    },
+    "evaluation": {
+      "new_events": 0,
+      "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
+    }
+  },
+  "finished_at": "2026-10-28T00:36:59.827618+00:00"
+}

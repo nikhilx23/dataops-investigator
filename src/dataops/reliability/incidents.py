@@ -242,23 +242,37 @@ def _rules(conn: Any, since: datetime) -> list[Event]:
                 )
             )
 
-    # R5 failed reconciliation (latest per check); financial checks are sev1
-    for rid, check, ds, status, mism, at, err in conn.execute(
+    # R5 failed reconciliation (latest per check); financial checks are sev1. Row-count checks
+    # name the tables that differ, so they are attributed to those tables' landing datasets
+    # (warehouse.raw.<table> / warehouse.cdc_pub.<table>) and correlate through lineage.
+    for rid, check, ds, status, mism, at, err, sample in conn.execute(
         "select distinct on (check_id) reconciliation_id, check_id, dataset_id, status,"
-        " mismatched_rows, observed_at, error_message from reliability.reconciliation_results"
+        " mismatched_rows, observed_at, error_message, mismatches"
+        " from reliability.reconciliation_results"
         " where observed_at >= %s order by check_id, observed_at desc",
         (since,),
     ).fetchall():
-        if status in ("fail", "error"):
-            sev = "sev1" if check.startswith(("revenue.", "inventory.")) else "sev2"
-            detail = f"{mism} mismatched keys" if status == "fail" else f"error: {err}"
+        if status not in ("fail", "error"):
+            continue
+        sev = "sev1" if check.startswith(("revenue.", "inventory.")) else "sev2"
+        detail = f"{mism} mismatched keys" if status == "fail" else f"error: {err}"
+        targets = [ds]
+        if check.startswith("ingestion.row_counts.") and status == "fail" and sample:
+            prefix = ds.rsplit(".", 1)[0]
+            targets = [f"{prefix}.{m['key']}" for m in sample if m.get("key")]
+        for target in targets:
+            what = detail
+            if target != ds:
+                m = next(x for x in sample if f"{ds.rsplit('.', 1)[0]}.{x['key']}" == target)
+                rows = (m.get("metrics") or {}).get("rows") or {}
+                what = f"{m['key']}: source {rows.get('left')} rows, warehouse {rows.get('right')}"
             ev.append(
                 Event(
                     "reconciliation_failed",
-                    ds,
+                    target,
                     sev,
                     "reconciliation",
-                    f"{check} {status}: {detail}",
+                    f"{check} {status}: {what}",
                     "reconciliation_results",
                     str(rid),
                     at,
