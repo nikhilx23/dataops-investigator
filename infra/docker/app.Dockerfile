@@ -1,20 +1,27 @@
+# syntax=docker/dockerfile:1
 # Application image: CLI, ingestion, reconciliation and dbt (lightweight profile).
-# Base image tag pinned; see docs/versions.md for why it is not digest-pinned yet.
-FROM python:3.12.11-slim-bookworm
+# Base image pinned by digest (pulled and built 2026-10-28).
+FROM python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 
-# postgresql-client 15 (bookworm) provides psql >= 15, needed for \getenv in bootstrap.sql.
-RUN apt-get update \
- && apt-get install -y --no-install-recommends postgresql-client \
- && rm -rf /var/lib/apt/lists/*
+# No OS packages: in Compose the database is bootstrapped by the postgres container's init
+# script (it has psql); this image only needs Python.
 
 RUN useradd --create-home --uid 10001 dataops
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN pip install ".[dbt]"
+# Optional build secret `pipca`: a CA bundle for builds behind a TLS-inspecting proxy.
+RUN --mount=type=secret,id=pipca,required=false \
+    if [ -f /run/secrets/pipca ]; then export PIP_CERT=/run/secrets/pipca SSL_CERT_FILE=/run/secrets/pipca; fi; \
+    pip install ".[dbt,app]"
 COPY dbt ./dbt
+COPY apps ./apps
+COPY catalog ./catalog
+COPY contracts ./contracts
+COPY runbooks ./runbooks
+COPY .streamlit ./.streamlit
 COPY infra/postgres ./infra/postgres
 COPY scripts ./scripts
 RUN mkdir -p /app/var && chown -R dataops /app/var /app/dbt

@@ -206,11 +206,6 @@ Known limitations:
 - The Airflow collector needs API credentials; in standalone mode they come from the
   generated password file at start-up.
 
-## Blockers
-- Docker Hub anonymous pull rate limit (HTTP 429) from the build network blocks the app image
-  build. Workarounds: retry later, authenticate `docker login` with a free Docker account, or
-  rely on the CI build.
-
 ## Milestone 4: AI investigator — **implemented; verified in fixture mode; real-model evaluation blocked** (2026-10-27)
 
 Implemented: migration `reliability/0004` (runbook documents/chunks with pgvector HNSW and
@@ -249,6 +244,61 @@ Found by verification and fixed:
 - Two seeds listed models as skipped that are not downstream in lineage, so the engine
   (correctly) split them into two incidents -> seeds checked against the lineage graph.
 
-## Next: Milestone 5 (recovery and demonstration)
-Recovery service with approvals and audit, failure scenarios 2-8, FastAPI, Streamlit,
-Prometheus/Grafana; real-model evaluation as soon as the key is provided.
+## Milestone 5: recovery and demonstration — **complete** (2026-10-28)
+
+Implemented: reliability migrations 0005 (recovery audit) and 0006 (evidence key per
+incident); recovery service with five predefined actions, typed scopes, live preconditions,
+dry runs, named-human approval, single-runner lock, verification that re-evaluates the
+incident; failure scenarios 2-8 with a runner; FastAPI (reads, investigations, recovery,
+`/metrics`); Streamlit dashboard (API only); Prometheus + Grafana (monitoring profile, alert
+rules, provisioned dashboard); app image (now builds) with `api` and `dashboard` Compose
+services. Guides: [recovery.md](recovery.md), [failure_scenarios.md](failure_scenarios.md).
+
+| Command / check | Result |
+|---|---|
+| Recovery of the open M3 schema-change incident (demo DB) | premature rebuild **rejected** with reason; approval by a service identity refused; `bounded_backfill` payments (79 rows) → verification_failed (1 signal left, correct); `rebuild_models` stg_payments+ (PASS=29) → **verified**; incident `resolved`, cause `confirmed` |
+| `dataops scenario run <2,3,5,6,7,8>` | every scenario: one sev1 incident 8.7–11.6 s after injection; recovery verified; cleanup reconciles — [results](results/scenarios/README.md) |
+| Scenario 2 through the dashboard (Playwright driving the UI) | escalate → owner fix → rebuild proposed, approved, executed and verified from the UI; incident resolved/confirmed (screenshots 05–07) |
+| API (TestClient + live) | `/health`, `/overview`, `/incidents`, `/impact`, `/metrics` (95 series lines), writes refused without token (401/403), unknown action 409, model mode without key 409 |
+| Compose: `postgres`, `app db migrate`, `api`, `dashboard` containers | migrations 0004–0006 applied; API healthy; dashboard pages render with 0 exceptions |
+| Compose monitoring profile | Prometheus target `up`; Grafana dashboard renders live metrics (screenshot 11) |
+| `pytest -m "not spark"` | 115 passed (85 unit, 30 integration) |
+| ruff, ruff format, mypy | clean |
+
+Found by verification and fixed:
+- Evidence ids were a global primary key, so a second incident citing the same dashboard path
+  crashed the engine -> primary key is now (incident, evidence id).
+- Row-count reconciliation signals were attributed to `warehouse.raw.source_records`, which
+  is outside lineage, so they opened a separate incident -> attributed to
+  `warehouse.raw.<table>`; scenarios 6 and 7 now produce one incident rooted at `raw.orders`.
+- Revoking SELECT made `information_schema` hide all columns -> the schema collector reported
+  a false breaking change; unreadable tables are now skipped.
+- Back-dated source corrections older than the loaded version can never win latest-version
+  ordering; scenarios 3 and 8 first produced unfixable states (verification correctly failed;
+  incidents closed with that reason) -> scenarios now write 1 s after the previous version.
+- Scenario cleanups that move data backwards or delete rows are invisible to incremental facts
+  -> cleanups end with a full refresh.
+- Scenario 6's first recovery plan omitted `stg_payments`; dbt's consistency test failed and
+  the action was recorded `failed` -> plan fixed.
+- The runner crashed when a proposal was refused (scope over 31 days) -> refusals are recorded.
+- The app image build failed on `apt-get` (deb.debian.org unreachable) -> no OS packages
+  needed; built through the proxy with an optional CA build secret.
+
+Not done / limits:
+- Real-model investigation and evaluation: still blocked (no API key).
+- The M3 consumer-lag incident in the Compose (full-profile) database stays open: recovering
+  it needs the Kafka/Spark stack running; not repeated in this milestone.
+- Scenario detected→verified times are machine time: the runner approves immediately.
+- Monitoring uses host networking (Linux); Docker Desktop needs the documented change.
+- Freshness `data_lag` can be negative after scenario cleanups (warehouse holds a version the
+  source no longer has); shown as observed, not clamped.
+
+## Next: Milestone 6 (benchmarks and portfolio)
+CI run on GitHub (needs the repository), benchmarks, remaining docs (architecture diagram,
+data dictionary, security, cost, demo script, troubleshooting, interview guide, resume
+bullets from verified results), optional Terraform; real-model evaluation when the key arrives.
+
+## Blockers
+- Real-model evaluation needs `ANTHROPIC_API_KEY` in the local `.env`.
+- Pushing needs an existing GitHub repository (this session cannot create one).
+- deb.debian.org and huggingface.co are not reachable from the build network.

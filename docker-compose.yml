@@ -80,6 +80,42 @@ services:
     command: ["health"]
     restart: "no"
 
+  api:
+    profiles: ["lightweight", "full"]
+    image: dataops-investigator/app:0.1.0
+    environment:
+      <<: *dataops-env
+      DATAOPS_API_TOKEN: ${DATAOPS_API_TOKEN:?}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DATAOPS_LLM_MODEL: ${DATAOPS_LLM_MODEL:-claude-sonnet-5-5}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["uvicorn", "dataops.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  dashboard:
+    profiles: ["lightweight", "full"]
+    image: dataops-investigator/app:0.1.0
+    environment:
+      DATAOPS_API_URL: http://api:8000
+      DATAOPS_API_TOKEN: ${DATAOPS_API_TOKEN:?}
+    depends_on:
+      api:
+        condition: service_healthy
+    entrypoint: ["streamlit", "run", "apps/dashboard/app.py", "--server.port", "8501",
+                 "--server.address", "0.0.0.0", "--server.headless", "true"]
+    ports:
+      - "127.0.0.1:8501:8501"
+    restart: unless-stopped
+
   kafka:
     profiles: ["full"]
     # Debezium's Kafka 3.9.0 build, from Quay (no Docker Hub pull limits), KRaft mode.
@@ -145,7 +181,46 @@ services:
       retries: 30
     restart: unless-stopped
 
+  # --------------------------------------------------------------- monitoring profile
+  # Prometheus scrapes the API's /metrics; Grafana shows the provisioned dashboard.
+  # Host networking (Linux) so both reach the API on 127.0.0.1 and stay local-only.
+  # Docker Desktop: replace the scrape target with host.docker.internal:8000 and start the
+  # API with --host 0.0.0.0 on a trusted machine only.
+  prometheus:
+    profiles: ["monitoring"]
+    image: quay.io/prometheus/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996
+    network_mode: host
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+      - --web.listen-address=127.0.0.1:9090
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - promdata:/prometheus
+    restart: unless-stopped
+
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:12.1.1@sha256:a1701c2180249361737a99a01bc770db39381640e4d631825d38ff4535efa47d
+    network_mode: host
+    environment:
+      GF_SERVER_HTTP_ADDR: 127.0.0.1
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${DATAOPS_GRAFANA_ADMIN_PASSWORD:?}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    restart: unless-stopped
+
 volumes:
   pgdata:
   appvar:
   kafkadata:
+  promdata:
+  grafanadata:

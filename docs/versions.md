@@ -37,10 +37,21 @@ means the version set was resolved by pip from published package metadata (offic
 | pgvector/pgvector | 0.8.0-pg16 | **verified** (pulled, runs the full profile) |
 | quay.io/debezium/kafka | 3.0.8.Final | **verified** |
 | quay.io/debezium/connect | 3.0.8.Final | **verified** |
-| python | 3.12.11-slim-bookworm | **not verified**: Docker Hub answered HTTP 429 (anonymous pull rate limit) on every attempt from the build network |
+| python | 3.12.11-slim-bookworm | **verified** 2026-10-28: pulled; app image built and run (`health`, API, dashboard containers) |
+| quay.io/prometheus/prometheus | v3.5.0 | **verified** (monitoring profile, scraping the API) |
+| grafana/grafana | 12.1.1 | **verified** (provisioned datasource and dashboard rendered) |
 
-Images that were pulled and run here are pinned by digest in docker-compose.yml. The python
-base image stays tag-pinned until it can be pulled (CI job `compose-and-scripts` builds it).
+All images are pinned by digest in docker-compose.yml and infra/docker/app.Dockerfile. The app
+image installs no OS packages (the build network cannot reach deb.debian.org); the database is
+bootstrapped by the postgres container's init script.
+
+## Python packages added in Milestones 4-5 (resolved against PyPI on 2026-10-27/28)
+
+| Extra | Packages |
+|---|---|
+| `ai` | anthropic 2.3.0 (installed; **no real call made yet**: no API key) |
+| `app` | fastapi 0.162.0, uvicorn 0.54.0, streamlit 1.66.1, prometheus-client 0.26.0, httpx 0.28.1 |
+| core | pydantic 2.14.1 (already pinned) |
 
 ## Why not newer/older
 

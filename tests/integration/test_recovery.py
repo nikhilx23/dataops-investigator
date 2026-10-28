@@ -61,3 +61,17 @@ def test_reader_role_cannot_change_recovery_state(prepared):  # noqa: F811
 
     with connect(Role.REL_READER) as conn, pytest.raises(psycopg.errors.InsufficientPrivilege):
         conn.execute("update reliability.recovery_actions set status='verified'")
+
+
+def test_api_reads_and_metrics(prepared):  # noqa: F811
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from dataops.api.app import app
+
+    c = TestClient(app)
+    assert c.get("/health").json()["status"] == "ok"
+    assert "pipelines" in c.get("/overview").json()
+    text = c.get("/metrics").text
+    assert "dataops_metadata_up 1.0" in text and "dataops_active_incidents" in text
+    assert "escalate_to_owner" in c.get("/recovery/catalog").json()

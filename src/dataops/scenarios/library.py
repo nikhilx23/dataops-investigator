@@ -167,34 +167,53 @@ def inject_duplicates(n: int = 5) -> dict[str, Any]:
 
 
 # --------------------------------------------------------------- 3 late-arriving payments
-def inject_late_payments(n: int = 6, behind_hours: int = 72) -> dict[str, Any]:
-    """Pending payments are captured, but the source commits them late with their original
-    business timestamps (updated_at far behind the loader watermark)."""
+def _behind_watermark(table: str) -> datetime:
+    """Latest updated_at that watermark-based extraction will not re-read (watermark minus
+    the 15-minute overlap, minus a margin)."""
+    from dataops.ingestion.batch import DEFAULT_OVERLAP, watermark
+
+    wm = watermark(table)
+    if wm is None:
+        raise RuntimeError(f"{table} has never been extracted; run a pipeline cycle first")
+    return wm - DEFAULT_OVERLAP - timedelta(minutes=2)
+
+
+def inject_late_payments(n: int = 6) -> dict[str, Any]:
+    """Pending payments are captured, but the payments service commits the change (and the
+    order's move to 'paid') with a timestamp just after the previous version, behind the
+    loader watermark, so watermark-based extraction never reads it."""
+    limit = min(_behind_watermark("payments"), _behind_watermark("orders"))
     with _src() as conn, conn.transaction():
         rows = conn.execute(
-            "select p.payment_id, p.created_at, p.updated_at, o.order_id, o.status from"
-            " shop.payments p"
-            " join shop.orders o using (order_id) where p.status='pending' order by"
-            " p.payment_id limit %s",
-            (n,),
+            "select p.payment_id, p.created_at, greatest(p.updated_at, o.updated_at), o.order_id,"
+            " o.status from shop.payments p join shop.orders o using (order_id)"
+            " where p.status='pending' and greatest(p.updated_at, o.updated_at) + interval '1"
+            " second' < %s"
+            " order by p.payment_id limit %s",
+            (limit, n),
         ).fetchall()
-        for pid, created, _upd, oid, _ost in rows:
-            at = created + timedelta(minutes=7)
+        if not rows:
+            raise RuntimeError(
+                "no pending payment is behind the watermark; run a pipeline cycle"
+                " (or wait 20 minutes after the last cleanup)"
+            )
+        for pid, created, prev, oid, _ost in rows:
+            ts = prev + timedelta(seconds=1)
             conn.execute(
                 "update shop.payments set status='succeeded', captured_at=%s, updated_at=%s"
                 " where payment_id=%s",
-                (at, at, pid),
+                (created + timedelta(minutes=7), ts, pid),
             )
             conn.execute(
-                "update shop.orders set status='paid', updated_at=%s where order_id=%s", (at, oid)
+                "update shop.orders set status='paid', updated_at=%s where order_id=%s", (ts, oid)
             )
+    stamps = [r[2] + timedelta(seconds=1) for r in rows]
     details = {
-        "payments": [
-            {"payment_id": r[0], "updated_at": r[2], "order_id": r[3], "order_status": r[4]}
-            for r in rows
-        ],
-        "window": [min(r[1] for r in rows), max(r[1] for r in rows) + timedelta(hours=1)],
+        "payments": [{"payment_id": r[0], "order_id": r[3], "order_status": r[4]} for r in rows],
+        "window": [min(stamps) - timedelta(minutes=1), max(stamps) + timedelta(minutes=1)],
     }
+    if details["window"][1] - details["window"][0] > timedelta(days=31):
+        raise RuntimeError("candidates span more than the 31-day backfill bound")
     _save("late_arriving_payments", details)
     return details
 
@@ -328,15 +347,15 @@ def _crashing_load() -> None:
 def inject_refund_corrections(n: int = 5) -> dict[str, Any]:
     """The refunds service corrects amounts (halves them) and writes the correction with a
     timestamp just after the previous version, far behind the extraction watermark, so
-    watermark-based extraction never sees the new versions. Refunds untouched for 2+ days are
+    watermark-based extraction never sees the new versions. Refunds behind the watermark are
     used, consecutive in updated_at so the recovery window stays small."""
     with _src() as conn, conn.transaction():
         rows = conn.execute(
             "select refund_id, amount_cents, refunded_at, updated_at from shop.refunds"
             " where amount_cents >= 200 and refund_id < %s"
-            " and updated_at < clock_timestamp() - interval '2 days'"
+            " and updated_at + interval '1 second' < %s"
             " order by updated_at desc limit %s",
-            (BASE_ID, n),
+            (BASE_ID, _behind_watermark("refunds"), n),
         ).fetchall()
         for rid, amt, _at, upd in rows:
             # the source bumps updated_at automatically unless the writer sets it; the faulty
@@ -472,11 +491,11 @@ SCENARIOS: dict[str, Scenario] = {
         Scenario(
             "late_arriving_payments",
             3,
-            "Captured payments committed late with old timestamps",
+            "Captured payments committed behind the extraction watermark",
             {"tables": ["payments"], "rows": 6},
             {
                 "root_dataset": "commerce_source.shop.payments",
-                "cause": "payments committed with updated_at days behind the extraction"
+                "cause": "captures committed with updated_at far behind the extraction"
                 " watermark, so"
                 " watermark-based extraction never read them",
                 "expected_detection": [
@@ -599,7 +618,7 @@ SCENARIOS: dict[str, Scenario] = {
         Scenario(
             "refund_revenue_discrepancy",
             8,
-            "Refund corrections written with original timestamps",
+            "Refund corrections written behind the extraction watermark",
             {"tables": ["refunds"], "rows": 5},
             {
                 "root_dataset": "commerce_source.shop.refunds",

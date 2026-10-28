@@ -6,10 +6,11 @@ A portfolio project that builds an operational data platform for a *fictional* c
 company, then a reliability and AI investigation layer around it. **All data is synthetic**;
 this is a simulated environment, not a real company's production platform.
 
-> **Status: Milestones 1–3 complete and verified (data platform, CDC + lakehouse, Airflow,
-> reliability platform with incident detection and impact analysis). Milestone 4 (AI
-> investigator) is implemented and verified in its labelled offline fixture mode; the
-> real-model evaluation has not run yet (no API key). Recovery and dashboard are not built.** See [docs/PROGRESS.md](docs/PROGRESS.md)
+> **Status: Milestones 1–5 implemented and verified (data platform, CDC + lakehouse, Airflow,
+> reliability platform, AI investigator, controlled recovery, failure scenarios, API,
+> dashboard, Prometheus/Grafana). The AI investigator is verified only in its labelled
+> offline fixture mode: the real-model evaluation has not run yet (no API key).
+> Milestone 6 (benchmarks, final docs) is next.** See [docs/PROGRESS.md](docs/PROGRESS.md)
 > for exactly what is implemented, verified, planned, and blocked. Nothing below claims more.
 
 ## The problem
@@ -125,6 +126,28 @@ python -m dataops investigate <incident-id>                   # real model; need
 python -m dataops eval --mode fixture                         # 35-case suite on isolated *_eval databases
 ```
 
+## Recovery, scenarios, API, dashboard, monitoring
+
+![Incident resolved after a verified recovery](docs/screenshots/07-incident-resolved-history.png)
+
+- **Recovery** ([guide](docs/recovery.md)): five predefined actions with typed scopes, live
+  preconditions, dry runs, named-human approval, an audit log, and verification that
+  re-evaluates the incident before marking its cause *confirmed*.
+- **Failure scenarios** ([guide](docs/failure_scenarios.md), [actual runs](docs/results/scenarios/README.md)):
+  eight reversible scenarios, each run end to end: inject → detect → investigate → recover →
+  verify → clean up.
+- **API** (FastAPI) and **dashboard** (Streamlit, talks only to the API); writes need a bearer
+  token and a named actor. **Prometheus/Grafana** in the `monitoring` Compose profile.
+
+```bash
+uvicorn dataops.api.app:app --host 127.0.0.1 --port 8000       # or: docker compose --profile lightweight up -d api dashboard
+streamlit run apps/dashboard/app.py                             # http://127.0.0.1:8501
+docker compose --profile monitoring up -d                       # Prometheus :9090, Grafana :3000 (Linux host networking)
+python -m dataops scenario run late_arriving_payments --actor "Your Name"
+```
+
+Screenshots from the running application: [docs/screenshots](docs/screenshots).
+
 ## Tests
 
 ```bash
@@ -137,9 +160,9 @@ ruff check . && ruff format --check . && mypy
 
 - Batch extraction cannot see hard deletes or intermediate versions between runs; the full
   profile's CDC path does.
-- The app container image has not been built here (Docker Hub rate limit); the full-profile
-  services ran in Compose and the CLI ran from the host virtualenv. The CI workflow has not
-  run yet (nothing has been pushed).
+- The CI workflow has not run yet (nothing has been pushed).
 - Reloading the source with a *different* seed requires resetting the warehouse raw zone.
-- Not built yet: recovery actions and the dashboard. The investigator has not been evaluated
-  with a real model yet, and retrieval uses a lexical (non-neural) embedding by default.
+- The investigator has not been evaluated with a real model yet, and retrieval uses a lexical
+  (non-neural) embedding by default.
+- Scenario cleanups that remove inserted rows also remove their raw records (a harness step):
+  batch extraction cannot observe deletes.

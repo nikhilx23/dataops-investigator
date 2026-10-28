@@ -186,16 +186,12 @@ def run(
                 cleaned = True
                 continue
             scope = _resolve_scope(step, details)
-            a = service.propose(
-                step["action"], scope, incident_id=incident_id, proposed_by="scenario-runner"
-            )
-            rec: dict[str, Any] = {
-                "action": step["action"],
-                "action_id": str(a["action_id"]),
-                "scope": scope,
-                "preconditions": a["preconditions"],
-            }
+            rec: dict[str, Any] = {"action": step["action"], "scope": scope}
             try:
+                a = service.propose(
+                    step["action"], scope, incident_id=incident_id, proposed_by="scenario-runner"
+                )
+                rec.update(action_id=str(a["action_id"]), preconditions=a["preconditions"])
                 service.approve(
                     str(a["action_id"]), actor, f"scenario {sid}: documented recovery step"
                 )

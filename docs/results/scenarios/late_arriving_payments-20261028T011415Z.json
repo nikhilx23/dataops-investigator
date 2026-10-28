@@ -1,39 +1,41 @@
 {
-  "scenario": "refund_revenue_discrepancy",
-  "number": 8,
-  "title": "Refund corrections written with original timestamps",
+  "scenario": "late_arriving_payments",
+  "number": 3,
+  "title": "Captured payments committed late with old timestamps",
   "scope": {
     "tables": [
-      "refunds"
+      "payments"
     ],
-    "rows": 5
+    "rows": 6
   },
   "ground_truth": {
-    "root_dataset": "commerce_source.shop.refunds",
-    "cause": "refund amounts corrected in the source with back-dated updated_at (behind the extraction watermark); extraction missed the new versions",
+    "root_dataset": "commerce_source.shop.payments",
+    "cause": "captures committed with updated_at far behind the extraction watermark, so watermark-based extraction never read them",
     "expected_detection": [
-      "revenue.daily.source_vs_mart fails on refunded_cents for the refund dates"
+      "revenue.daily.source_vs_mart fails on the capture dates",
+      "ingestion.row_counts passes (same rows, different versions)"
     ],
     "expected_impact": [
       "warehouse.marts.mart_daily_revenue",
-      "bi.dashboard.finance_reconciliation"
+      "bi.dashboard.revenue_overview"
     ]
   },
   "steps": [
     {
       "action": "bounded_backfill",
-      "action_id": "1afcf6f0-37d0-490d-b3fb-0ef3f7f9a6c3",
       "scope": {
         "tables": [
-          "refunds"
+          "orders",
+          "payments"
         ],
-        "start": "2026-03-29T19:47:06+00:00",
-        "end": "2026-03-30T05:39:25+00:00"
+        "start": "2026-10-28T00:53:54.495394+00:00",
+        "end": "2026-10-28T00:55:54.498865+00:00"
       },
+      "action_id": "2ce729fa-a45d-44fc-8b7a-fbfb1abf4029",
       "preconditions": [
         {
           "check": "window_bounded",
-          "detail": "2026-03-29T19:47:06+00:00 .. 2026-03-30T05:39:25+00:00",
+          "detail": "2026-10-28T00:53:54.495394+00:00 .. 2026-10-28T00:55:54.498865+00:00",
           "status": "met"
         },
         {
@@ -43,7 +45,7 @@
         },
         {
           "check": "no_running_ingestion_batch",
-          "detail": "0 running batch(es) for ['refunds']",
+          "detail": "0 running batch(es) for ['orders', 'payments']",
           "status": "met"
         },
         {
@@ -60,13 +62,14 @@
     },
     {
       "action": "rebuild_models",
-      "action_id": "660bed8c-e340-4ab8-b6e6-36f21afa1100",
       "scope": {
         "models": [
-          "stg_refunds"
+          "stg_orders",
+          "stg_payments"
         ],
         "full_refresh": true
       },
+      "action_id": "0a18fb2b-a69a-4fd8-956d-2e4161c23ca8",
       "preconditions": [
         {
           "check": "models_are_derived_dbt_models",
@@ -85,9 +88,9 @@
     }
   ],
   "baseline": {
-    "label": "refund_revenue_discrepancy-baseline",
-    "started_at": "2026-10-28T00:30:56.850665+00:00",
-    "seconds": 8.6,
+    "label": "late_arriving_payments-baseline",
+    "started_at": "2026-10-28T01:14:03.394150+00:00",
+    "seconds": 12.1,
     "ingest_problems": {},
     "dbt_exit": 0,
     "reconciliation": [
@@ -106,44 +109,49 @@
     }
   },
   "active_incidents_before": 0,
-  "injected_at": "2026-10-28T00:31:05.496547+00:00",
+  "injected_at": "2026-10-28T01:14:15.461890+00:00",
   "injection": {
-    "refunds": [
+    "payments": [
       {
-        "refund_id": 900154,
-        "amount_cents": 1299,
-        "updated_at": "2026-03-30 05:38:25+00:00"
+        "payment_id": 501889,
+        "order_id": 101726,
+        "order_status": "placed"
       },
       {
-        "refund_id": 900155,
-        "amount_cents": 22197,
-        "updated_at": "2026-03-30 01:35:20+00:00"
+        "payment_id": 501905,
+        "order_id": 101741,
+        "order_status": "placed"
       },
       {
-        "refund_id": 900140,
-        "amount_cents": 6998,
-        "updated_at": "2026-03-29 23:26:32+00:00"
+        "payment_id": 501910,
+        "order_id": 101746,
+        "order_status": "placed"
       },
       {
-        "refund_id": 900134,
-        "amount_cents": 10798,
-        "updated_at": "2026-03-29 20:41:37+00:00"
+        "payment_id": 501914,
+        "order_id": 101750,
+        "order_status": "placed"
       },
       {
-        "refund_id": 900143,
-        "amount_cents": 14397,
-        "updated_at": "2026-03-29 19:48:06+00:00"
+        "payment_id": 501915,
+        "order_id": 101751,
+        "order_status": "placed"
+      },
+      {
+        "payment_id": 501976,
+        "order_id": 101799,
+        "order_status": "placed"
       }
     ],
     "window": [
-      "2026-03-29 19:47:06+00:00",
-      "2026-03-30 05:39:25+00:00"
+      "2026-10-28 00:53:54.495394+00:00",
+      "2026-10-28 00:55:54.498865+00:00"
     ]
   },
   "detection_cycle": {
-    "label": "refund_revenue_discrepancy-after",
-    "started_at": "2026-10-28T00:31:05.517809+00:00",
-    "seconds": 8.7,
+    "label": "late_arriving_payments-after",
+    "started_at": "2026-10-28T01:14:15.508491+00:00",
+    "seconds": 11.5,
     "ingest_problems": {},
     "dbt_exit": 0,
     "reconciliation": [
@@ -163,17 +171,17 @@
   },
   "detected": [
     {
-      "incident_id": "7cc8d6da-c2d7-4fc9-9016-84b1de7da31b",
+      "incident_id": "2ad7e756-ab81-4bf3-96ad-03adbdfddd51",
       "title": "Reconciliation at mart_daily_revenue, 1 dashboard(s) affected",
       "severity": "sev1",
       "root": "warehouse.marts.mart_daily_revenue",
-      "detected_at": "2026-10-28 00:31:14.226619+00:00",
-      "first_event_at": "2026-10-28 00:31:12.708740+00:00",
-      "seconds_from_injection_to_detection": 8.7
+      "detected_at": "2026-10-28 01:14:27.041657+00:00",
+      "first_event_at": "2026-10-28 01:14:23.251533+00:00",
+      "seconds_from_injection_to_detection": 11.6
     }
   ],
   "investigation": {
-    "investigation_id": "8370a541-d991-47f1-a5a1-01e9c6a867f3",
+    "investigation_id": "3c9ccf95-0161-4e21-bbd8-154159e1e86c",
     "mode": "fixture",
     "status": "completed",
     "top_cause": "reconciliation failed at warehouse.marts.mart_daily_revenue",
@@ -182,25 +190,26 @@
     "note": "fixture mode is a deterministic harness, not AI"
   },
   "timeline": {
-    "first_signal_at": "2026-10-28 00:31:12.708740+00:00",
-    "detected_at": "2026-10-28 00:31:14.226619+00:00",
-    "first_investigation_at": "2026-10-28 00:31:14.272758+00:00",
-    "recovery_started_at": "2026-10-28 00:31:14.564408+00:00",
-    "verified_at": "2026-10-28 00:31:25.022869+00:00",
-    "resolved_at": "2026-10-28 00:31:25.022869+00:00",
-    "detection_minutes": "0.0",
+    "first_signal_at": "2026-10-28 01:14:23.251533+00:00",
+    "detected_at": "2026-10-28 01:14:27.041657+00:00",
+    "first_investigation_at": "2026-10-28 01:14:27.082677+00:00",
+    "recovery_started_at": "2026-10-28 01:14:27.394267+00:00",
+    "verified_at": "2026-10-28 01:14:43.022949+00:00",
+    "resolved_at": "2026-10-28 01:14:43.022949+00:00",
+    "detection_minutes": "0.1",
     "to_recovery_minutes": "0.0",
-    "to_verified_minutes": "0.2",
+    "to_verified_minutes": "0.3",
     "note": "all timestamps are recorded by the platform during actual runs"
   },
   "cleanup": {
     "status": "reverted",
-    "refunds": 5
+    "payments": 6,
+    "full_refresh_exit": 0
   },
   "post_cleanup_cycle": {
-    "label": "refund_revenue_discrepancy-cleanup",
-    "started_at": "2026-10-28T00:31:25.068982+00:00",
-    "seconds": 9.3,
+    "label": "late_arriving_payments-cleanup",
+    "started_at": "2026-10-28T01:14:47.813547+00:00",
+    "seconds": 12.0,
     "ingest_problems": {},
     "dbt_exit": 0,
     "reconciliation": [
@@ -218,5 +227,5 @@
       "lineage_version": "58697c1e-bf05-4de2-9c43-321d8d6680b4"
     }
   },
-  "finished_at": "2026-10-28T00:31:34.406538+00:00"
+  "finished_at": "2026-10-28T01:14:59.805032+00:00"
 }

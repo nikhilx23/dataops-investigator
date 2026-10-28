@@ -1,0 +1,11 @@
+# Scrapes the DataOps Investigator API's /metrics (computed from the reliability views).
+# The monitoring profile runs with host networking (Linux), so 127.0.0.1 is the host.
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+scrape_configs:
+  - job_name: dataops-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["127.0.0.1:8000"]
+rule_files: ["/etc/prometheus/alerts.yml"]

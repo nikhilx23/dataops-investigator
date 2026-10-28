@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[dbt,dev]"
+      - run: pip install -e ".[dbt,dev,app]"
       - name: Ruff lint
         run: ruff check .
       - name: Ruff format
@@ -55,7 +55,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[dbt,dev]"
+      - run: pip install -e ".[dbt,dev,app]"
       - name: Install psql client (>= 15 for \getenv)
         run: sudo apt-get update && sudo apt-get install -y postgresql-client-16 || sudo apt-get install -y postgresql-client
       - name: Generate throwaway CI credentials

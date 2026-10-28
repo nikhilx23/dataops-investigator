@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: dataops
+    folder: DataOps Investigator
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

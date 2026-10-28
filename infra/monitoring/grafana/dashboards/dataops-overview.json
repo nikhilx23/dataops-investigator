@@ -1,0 +1,458 @@
+{
+  "uid": "dataops-overview",
+  "title": "DataOps Investigator \u2014 reliability",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "refresh": "30s",
+  "tags": [
+    "dataops"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active sev1 incidents",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_active_incidents{severity=\"sev1\"}",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 2,
+      "title": "Active incidents (all)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(dataops_active_incidents)",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 3,
+      "title": "Reconciliation checks failing",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(dataops_reconciliation_passing == 0) or vector(0)",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 4,
+      "title": "Stale datasets",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(dataops_dataset_stale) or vector(0)",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 5,
+      "title": "Metadata reachable",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_metadata_up",
+          "legendFormat": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 6,
+      "title": "Failed pipeline runs (24 h)",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_pipeline_failed_runs_24h",
+          "legendFormat": "{{pipeline}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 7,
+      "title": "Active incidents by severity",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_active_incidents",
+          "legendFormat": "{{severity}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 8,
+      "title": "Reconciliation mismatched keys",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 4,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_reconciliation_mismatched_keys",
+          "legendFormat": "{{check}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 9,
+      "title": "Freshness lag",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_freshness_lag_seconds",
+          "legendFormat": "{{dataset}} {{measure}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 10,
+      "title": "Consumer lag (CDC topics)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_consumer_lag_messages",
+          "legendFormat": "{{topic}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 11,
+      "title": "Recovery actions by status",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_recovery_actions_total",
+          "format": "table",
+          "instant": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {},
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true
+            },
+            "renameByName": {
+              "Value": "count"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Detection \u2192 verified recovery",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_incident_seconds_to_verified",
+          "legendFormat": "{{incident}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 13,
+      "title": "Investigations by mode and status",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "dataops-prom"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 20,
+        "w": 6,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "dataops_investigations_total",
+          "format": "table",
+          "instant": true,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "dataops-prom"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {},
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true
+            },
+            "renameByName": {
+              "Value": "count"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "description": "Synthetic data. Metrics are computed from the reliability views at scrape time."
+}

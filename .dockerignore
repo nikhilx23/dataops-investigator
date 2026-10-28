@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.venv
+.git
+var
+dbt/target
+dbt/logs
+dbt/dbt_packages
+**/__pycache__
+evaluations/results
+docs/screenshots

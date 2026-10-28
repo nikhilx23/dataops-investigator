@@ -1,0 +1,16 @@
+groups:
+  - name: dataops
+    rules:
+      - alert: DataOpsSev1IncidentOpen
+        expr: dataops_active_incidents{severity="sev1"} > 0
+        for: 1m
+        labels: {severity: page}
+        annotations: {summary: "A sev1 data incident is open"}
+      - alert: DataOpsReconciliationFailing
+        expr: dataops_reconciliation_passing == 0
+        for: 5m
+        annotations: {summary: "Reconciliation {{ $labels.check }} is failing"}
+      - alert: DataOpsMetadataDown
+        expr: dataops_metadata_up == 0 or absent(dataops_metadata_up)
+        for: 2m
+        annotations: {summary: "Reliability metadata is not reachable from the API"}
