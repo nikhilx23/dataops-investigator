@@ -206,7 +206,7 @@ Known limitations:
 - The Airflow collector needs API credentials; in standalone mode they come from the
   generated password file at start-up.
 
-## Milestone 4: AI investigator — **implemented; verified in fixture mode; real-model evaluation blocked** (2026-10-27)
+## Milestone 4: AI investigator — **complete; real-model evaluation on Claude Haiku 5.5 done 2026-10-30** (2026-10-27)
 
 Implemented: migration `reliability/0004` (runbook documents/chunks with pgvector HNSW and
 tsvector indexes; investigation audit fields); seven original runbooks; incremental,
@@ -228,9 +228,7 @@ Details: [investigator.md](investigator.md), [../evaluations/README.md](../evalu
 | ruff, ruff format, mypy | clean |
 
 Not done / blocked:
-- **Real-model evaluation: blocked** until `ANTHROPIC_API_KEY` is in the local `.env`
-  (api.anthropic.com is reachable: 401 without a key). The Anthropic code path is
-  implemented but has not made a single real call yet.
+- **Real-model evaluation: done 2026-10-30** (see "Real-model evaluation" below); originally blocked until `ANTHROPIC_API_KEY` was in the local `.env`.
 - **Neural embeddings: blocked** (Hugging Face unreachable from this network); the default
   `hashing-v1-384` embedder is lexical, labelled as such in every chunk and result.
 - No human-rubric scoring yet (needs real-model outputs).
@@ -285,7 +283,7 @@ Found by verification and fixed:
   needed; built through the proxy with an optional CA build secret.
 
 Not done / limits:
-- Real-model investigation and evaluation: still blocked (no API key).
+- Real-model investigation and evaluation: done on 2026-10-30 (see the section below).
 - The M3 consumer-lag incident in the Compose (full-profile) database stays open: recovering
   it needs the Kafka/Spark stack running; not repeated in this milestone.
 - Scenario detected→verified times are machine time: the runner approves immediately.
@@ -323,6 +321,26 @@ Found by verification and fixed:
   intermediate are tables with `ANALYZE` (also turns a broken source cast into a failing
   staging model instead of erroring tests, which the incident engine reports directly).
 
+## Real-model evaluation (Claude Haiku 5.5) — **verified** (2026-10-30)
+
+The user created an Anthropic API key ($5 credit, no auto-reload); it was copied from a file
+into the git-ignored `.env` without being printed, and the staged copy deleted. A one-request
+test answered. Three full runs of the 35-case suite
+([evaluations/README.md](../evaluations/README.md#results)):
+
+| Prompt | Root cause | Citation validity | Injection: planted ids / forbidden actions | Failed runs | Median latency | Cost |
+|---|---|---|---|---|---|---|
+| v1 | 31/35 | 83% | 0 / 0 | 2 | 26.5 s | $0.28 |
+| v2 | 30/35 | 99.7% | 0 / 0 | 2 | 21.1 s | $0.26 |
+| v2.1 | 29/35 | 100% | 0 / 0 | 1 | 22.4 s | $0.26 |
+
+Found by the real model and fixed in the investigator (not in the suite):
+- Sentences placed in the evidence-id field -> separate `conflict_notes` field (validated for
+  forbidden text and ungrounded numbers).
+- Lists sent as JSON strings, sometimes with stray trailing brackets -> decoded before
+  validation; a fact without ids is dropped by the validator instead of failing the run.
+Not fixed (reported): Haiku rarely calls `search_runbooks` or proposes recovery even when told
+to; the suite doubles as the tuning set; one run per configuration.
+
 ## Blockers
-- Real-model evaluation needs `ANTHROPIC_API_KEY` in the local `.env`.
 - deb.debian.org and huggingface.co are not reachable from the build network.

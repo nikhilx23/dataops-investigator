@@ -33,7 +33,9 @@ class _M(BaseModel):
 
 class Fact(_M):
     statement: str = Field(max_length=400)
-    evidence_ids: EvidenceIds = Field(min_length=1, max_length=8)
+    # min 0: a fact without citations is accepted here and removed by the validator (counted
+    # as unsupported) instead of failing the whole submission.
+    evidence_ids: EvidenceIds = Field(default_factory=list, max_length=8)
 
 
 class Cause(_M):
@@ -45,7 +47,14 @@ class Cause(_M):
     )
     confidence_rationale: str = Field(max_length=300)
     supporting_evidence: EvidenceIds = Field(min_length=1, max_length=10)
-    conflicting_evidence: EvidenceIds = Field(default_factory=list, max_length=10)
+    conflicting_evidence: EvidenceIds = Field(
+        default_factory=list, max_length=10, description="evidence ids only, exactly as returned"
+    )
+    conflict_notes: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+        description="plain-language notes on what does not fit this cause (no ids needed)",
+    )
 
 
 class AffectedPath(_M):

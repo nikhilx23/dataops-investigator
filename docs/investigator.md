@@ -82,7 +82,7 @@ the package and Hugging Face model download are not reachable from this build ne
 
 | Mode | What it is | Reported as |
 |---|---|---|
-| `model` | Anthropic Messages API with tool use (`DATAOPS_LLM_MODEL`, default `claude-sonnet-5-5`); key from `ANTHROPIC_API_KEY` in the local `.env` | real model results |
+| `model` | Anthropic Messages API with tool use (`DATAOPS_LLM_MODEL`, default `claude-sonnet-5-5`; evaluated with `claude-haiku-5-5`); key from `ANTHROPIC_API_KEY` in the local `.env` | real model results ([evaluation](../evaluations/README.md#results)) |
 | `fixture` | `FixtureProvider`: fixed tool plan + rule mapping, deterministic. Exercises the same loop, tools, validator and audit | **not AI inference**; separate result directory; never in model metrics |
 
 ```bash

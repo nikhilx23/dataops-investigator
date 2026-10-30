@@ -16,8 +16,9 @@ Nothing in this project has been deployed to a cloud, and no paid resources were
 - Model mode: cost = tokens × your provider price. Every investigation records input/output
   tokens; the evaluation report computes cost only when `DATAOPS_LLM_PRICE_INPUT_PER_MTOK` and
   `DATAOPS_LLM_PRICE_OUTPUT_PER_MTOK` are set (no prices are hard-coded). Tool results are capped
-  at 12k characters each and the context at 90k characters, which bounds tokens per run. No
-  real-model runs have been made yet, so no measured cost exists.
+  at 12k characters each and the context at 90k characters, which bounds tokens per run.
+  Measured: three 35-case runs on Claude Haiku 5.5 cost $0.28, $0.26 and $0.26
+  (≈ $0.008 per investigation). Sonnet has not been run.
 
 ## If moved to a cloud (estimate inputs, not quotes)
 

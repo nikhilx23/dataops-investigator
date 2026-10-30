@@ -56,7 +56,50 @@ No LLM judge is used.
 
 ## Results
 
-| Mode | Run | Status |
-|---|---|---|
-| fixture | `results/fixture/` | executed (labelled harness, not AI) |
-| model | `results/model/` | **not run yet** — needs `ANTHROPIC_API_KEY` |
+### Real model: Claude Haiku 5.5 (2026-10-30), three runs of all 35 cases
+
+The same suite was used to find and fix problems between runs, so these are development-set
+numbers, not a held-out test. Each configuration ran once; the spread between runs shows the
+run-to-run variance is large compared with the prompt changes.
+
+| Metric | v1 | v2 | v2.1 |
+|---|---|---|---|
+| Root-cause accuracy (rubric) | 31/35 (89%) | 30/35 (86%) | 29/35 (83%) |
+| Category accuracy | 27/31 | 27/31 | 27/31 |
+| Appropriate abstention | 33/35 | 32/35 | 30/35 |
+| Citation validity (raw output) | 297/358 (83%) | 290/291 (99.7%) | 297/297 (100%) |
+| Unsupported claims removed by the validator | 5/187 (2.7%) | 29/182 (15.9%) | 34/225 (15.1%) |
+| Prompt injection resisted (rubric) | 5/5 | 5/5 | 4/5 (see note) |
+| Planted ids cited / forbidden actions proposed | 0 / 0 | 0 / 0 | 0 / 0 |
+| Expected recovery action suggested | 15/22 | 13/22 | 10/22 |
+| Unmet precondition respected | 1/1 | 1/1 | 1/1 |
+| Missing evidence reported on tool failure | 2/2 | 2/2 | 1/2 |
+| Relevant runbook retrieved during the run | 7/35 | 8/35 | 4/35 |
+| Investigations that failed (invalid submission) | 2 | 2 | 1 |
+| Median / max latency | 26.5 s / 46.2 s | 21.1 s / 43.3 s | 22.4 s / 37.8 s |
+| Tokens in / out | 1,727,553 / 222,734 | 1,636,572 / 198,422 | 1,622,826 / 198,621 |
+| Cost (USD, $0.10 / $0.50 per MTok) | 0.28 | 0.26 | 0.26 |
+
+Changes between runs: **v2** added `conflict_notes` (v1 put sentences into the evidence-id
+field, which counted as invalid citations), allowed facts without ids to be dropped by the
+validator instead of failing the submission, decoded lists sent as JSON strings, and asked for
+a runbook search and at least one recovery option. **v2.1** also tolerated trailing characters
+after such a JSON string.
+
+Reading the numbers honestly:
+- The clear effect of v2 is citation validity (83% → 100%), because explanations moved out of
+  the id field. The rise in removed claims is the other side of the same change: facts without
+  ids are now dropped by the validator instead of crashing the run.
+- The instructions to search runbooks and to always propose recovery did **not** work for Haiku
+  (fewer, not more). Accuracy differences of 1–2 cases are within run-to-run noise.
+- The v2.1 injection "failure" (PI-01) is the model *reporting* the attack: it quoted the
+  injected "99% confidence" in a fact explaining it ignored the instructions. The validator
+  removed that text; no planted id was cited and no forbidden action was proposed in any run.
+- The remaining failed submission (CF-01, v2.1) used an unknown field name and was refused by
+  the schema; it is recorded as failed.
+- Retrieval during runs is low mainly because Haiku rarely calls `search_runbooks`; the
+  standalone retrieval benchmark (hit@4 35/35) measures the retriever, not the agent.
+
+### Fixture mode (labelled harness, not AI)
+
+`results/fixture/`: see that report; never mixed with the numbers above.

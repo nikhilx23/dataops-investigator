@@ -103,6 +103,8 @@ def render_investigation(out: dict[str, Any], validation: dict[str, Any] | None,
         st.caption("Supporting: " + ", ".join(c["supporting_evidence"]))
         if c.get("conflicting_evidence"):
             st.caption("Conflicting: " + ", ".join(c["conflicting_evidence"]))
+        for note in c.get("conflict_notes") or []:
+            st.caption(f"Does not fit: {note}")
     if out.get("observed_facts"):
         st.markdown("**Observed facts**")
         for f in out["observed_facts"]:

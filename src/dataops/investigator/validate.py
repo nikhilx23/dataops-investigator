@@ -146,6 +146,14 @@ def validate(
             )
             report["ungrounded_numbers"] += bad
             continue
+        notes = []
+        for note in c.conflict_notes:
+            bad_note = [n for n in numbers_claimed(note) if not grounded(n, all_numbers)]
+            clean = scrub(note, "conflict_note")
+            if clean is None or bad_note:
+                report["ungrounded_numbers"] += bad_note
+                continue
+            notes.append(clean)
         causes.append(
             c.model_copy(
                 update={
@@ -153,6 +161,7 @@ def validate(
                     "supporting_evidence": sup,
                     "confidence_rationale": rat or "",
                     "conflicting_evidence": ok_ids(c.conflicting_evidence),
+                    "conflict_notes": notes,
                 }
             )
         )

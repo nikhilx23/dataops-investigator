@@ -41,5 +41,7 @@ build to 9.547 s. All tests and the scenario suite were re-run on the change.
 - Failure scenarios: injection → incident detection 10.6–12.1 s, dominated by one pipeline cycle
   ([results/scenarios](results/scenarios/README.md)).
 - Investigator in fixture mode (not AI): median 215 ms over 35 evaluation cases
-  ([evaluations/results/fixture](../evaluations/results/fixture/)). Real-model latency and token cost:
-  not measured yet.
+  ([evaluations/results/fixture](../evaluations/results/fixture/)).
+- Investigator on Claude Haiku 5.5: median 21–27 s per investigation, about 46,000 input and
+  5,700 output tokens per investigation, $0.26–0.28 per 35-case run
+  ([evaluations/README.md](../evaluations/README.md#results)).

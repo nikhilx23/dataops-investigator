@@ -49,7 +49,7 @@ bootstrapped by the postgres container's init script.
 
 | Extra | Packages |
 |---|---|
-| `ai` | anthropic 2.3.0 (installed; **no real call made yet**: no API key) |
+| `ai` | anthropic 2.3.0 (**verified** 2026-10-30: three evaluation runs on Claude Haiku 5.5) |
 | `app` | fastapi 0.162.0, uvicorn 0.54.0, streamlit 1.66.1, prometheus-client 0.26.0, httpx 0.28.1 |
 | core | pydantic 2.14.1 (already pinned) |
 

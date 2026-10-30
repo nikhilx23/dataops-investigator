@@ -8,8 +8,9 @@ this is a simulated environment, not a real company's production platform.
 
 > **Status: Milestones 1–6 implemented (data platform, CDC + lakehouse, Airflow, reliability
 > platform, AI investigator, controlled recovery, failure scenarios, API, dashboard,
-> Prometheus/Grafana, benchmarks, docs, CI green). The AI investigator is verified only in
-> its labelled offline fixture mode: the real-model evaluation has not run yet (no API key).
+> Prometheus/Grafana, benchmarks, docs, CI green). The AI investigator has been evaluated
+> on Claude Haiku 5.5: 29–31 of 35 evaluation cases correct across three runs at about $0.26 per
+> full run ([results](evaluations/README.md#results)).
 > Verified results, resume bullets and unfinished work: [docs/portfolio.md](docs/portfolio.md).** See [docs/PROGRESS.md](docs/PROGRESS.md)
 > for exactly what is implemented, verified, planned, and blocked. Nothing below claims more.
 
@@ -176,7 +177,7 @@ ruff check . && ruff format --check . && mypy
 - Batch extraction cannot see hard deletes or intermediate versions between runs; the full
   profile's CDC path does.
 - Reloading the source with a *different* seed requires resetting the warehouse raw zone.
-- The investigator has not been evaluated with a real model yet, and retrieval uses a lexical
-  (non-neural) embedding by default.
+- The investigator has been evaluated on Claude Haiku 5.5 only (not Sonnet/Opus), on a suite that
+  was also used for tuning; retrieval uses a lexical (non-neural) embedding by default.
 - Scenario cleanups that remove inserted rows also remove their raw records (a harness step):
   batch extraction cannot observe deletes.

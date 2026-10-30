@@ -262,3 +262,44 @@ def test_evaluation_suite_is_complete_and_separate_from_the_corpus():
     assert all(c["template"] in seeds.TEMPLATES for c in suite["cases"])
     corpus = " ".join(p.read_text() for p in runbooks.RUNBOOK_DIR.glob("*.md"))
     assert "should_abstain" not in corpus and not any(c["id"] in corpus for c in suite["cases"])
+
+
+def test_stringified_lists_are_decoded_before_validation():
+    payload = {
+        "abstain": True,
+        "summary": "s",
+        "observed_facts": json.dumps([{"statement": "x", "evidence_ids": [ID_A]}]),
+    }
+    inv = Investigation.model_validate(engine._unstring(payload))
+    assert inv.observed_facts[0].evidence_ids == [ID_A]
+
+
+def test_fact_without_citation_is_dropped_not_fatal():
+    out, rep = validate.validate(
+        _inv(observed_facts=[{"statement": "no ids", "evidence_ids": []}]), SEEN
+    )
+    assert not out.observed_facts and rep["removed_facts"][0]["no_valid_citation"]
+
+
+def test_conflict_notes_are_grounded():
+    out, _ = validate.validate(
+        _inv(
+            likely_causes=[
+                {
+                    "cause": "breaking change",
+                    "category": "schema_change",
+                    "confidence": "medium",
+                    "confidence_rationale": "r",
+                    "supporting_evidence": [ID_A],
+                    "conflict_notes": ["totals differ by 4980", "invented 777777 rows"],
+                }
+            ]
+        ),
+        SEEN,
+    )
+    assert out.likely_causes[0].conflict_notes == ["totals differ by 4980"]
+
+
+def test_stringified_list_with_trailing_junk_is_decoded():
+    payload = {"abstain": True, "summary": "s", "evidence_references": json.dumps([ID_A]) + "}]"}
+    assert Investigation.model_validate(engine._unstring(payload)).evidence_references == [ID_A]
