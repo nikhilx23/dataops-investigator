@@ -1,6 +1,6 @@
 # Progress log
 
-Purpose: let any engineer or agent resume without repeating work. Status words are strict:
+Purpose: let any engineer resume without repeating work. Status words are strict:
 **verified** = executed here with the result shown; **implemented** = code exists, not run
 end to end; **planned** = not started; **blocked** = cannot proceed in this environment.
 
@@ -303,8 +303,7 @@ values). Second run (40621685613): **all 5 jobs passed**.
 Implemented: `benchmarks/run.py` (isolated `*_bench` databases) with results for the small and
 medium profiles ([benchmarks.md](benchmarks.md)); architecture diagram rendered from Mermaid;
 generated data dictionary (`scripts/data_dictionary.py`); security, cost, troubleshooting,
-demo script, interview guide; [portfolio.md](portfolio.md) with three resume bullets from
-verified results and the list of unfinished work; optional Azure Terraform sketch (not
+demo script; [status.md](status.md) with completed and unfinished work; optional Azure Terraform sketch (not
 validated: no Terraform CLI here; never applied).
 
 | Command / check | Result |

@@ -11,7 +11,7 @@ this is a simulated environment, not a real company's production platform.
 > Prometheus/Grafana, benchmarks, docs, CI green). The AI investigator has been evaluated
 > on Claude Haiku 5.5: 29–31 of 35 evaluation cases correct across three runs at about $0.26 per
 > full run ([results](evaluations/README.md#results)).
-> Verified results, resume bullets and unfinished work: [docs/portfolio.md](docs/portfolio.md).** See [docs/PROGRESS.md](docs/PROGRESS.md)
+> Completed vs unfinished work: [docs/status.md](docs/status.md).** See [docs/PROGRESS.md](docs/PROGRESS.md)
 > for exactly what is implemented, verified, planned, and blocked. Nothing below claims more.
 
 ![Architecture](docs/architecture/overview.png)
@@ -26,7 +26,7 @@ this is a simulated environment, not a real company's production platform.
 | Failure scenarios, recovery guide | [failure_scenarios.md](docs/failure_scenarios.md), [recovery.md](docs/recovery.md) |
 | Benchmarks | [benchmarks.md](docs/benchmarks.md) |
 | Security, cost | [security.md](docs/security.md), [cost.md](docs/cost.md) |
-| Demo script, troubleshooting, interview guide | [demo_script.md](docs/demo_script.md), [troubleshooting.md](docs/troubleshooting.md), [interview_guide.md](docs/interview_guide.md) |
+| Demo script, troubleshooting, status | [demo_script.md](docs/demo_script.md), [troubleshooting.md](docs/troubleshooting.md), [status.md](docs/status.md) |
 | Progress log (implemented / verified / blocked) | [PROGRESS.md](docs/PROGRESS.md) |
 
 ## The problem
