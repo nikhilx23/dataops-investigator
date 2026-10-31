@@ -173,10 +173,10 @@ def incidents_page() -> None:
         st.dataframe(pd.DataFrame(inc["evidence"]), hide_index=True, use_container_width=True)
     with t2:
         imp = get(f"/incidents/{inc['incident_id']}/impact")
-        if imp.get("root"):
+        if imp.get("impacted") is not None:
             st.write(
                 f"{imp['downstream_count']} downstream datasets; dashboards: "
-                + ", ".join(imp["dashboards"])
+                + (", ".join(imp["dashboards"]) or "none")
             )
             st.dataframe(
                 pd.DataFrame(imp["impacted"])[["dataset_id", "kind", "hops", "path"]],
@@ -184,7 +184,7 @@ def incidents_page() -> None:
                 use_container_width=True,
             )
         else:
-            st.info(imp.get("note"))
+            st.info(imp.get("note") or "no impact information for this incident")
     with t3:
         mode = st.radio(
             "Mode",

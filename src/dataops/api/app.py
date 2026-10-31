@@ -161,7 +161,7 @@ def impact(incident_id: UUID) -> dict[str, Any]:
             "note": "incident is keyed by a group (several roots); see its signals",
         }
     g, version = lineage.load_latest()
-    return _clean({"lineage_version": version, **lineage.impact(g, root)})
+    return _clean({"root": root, "lineage_version": version, **lineage.impact(g, root)})
 
 
 # ------------------------------------------------------------------ investigations
